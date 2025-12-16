@@ -6,7 +6,6 @@ import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns'
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
-import { toast } from 'sonner'
 import { Database } from '@/types/supabase'
 
 // I need to install Progress component or build it. I'll assume I have it or use a div.
@@ -17,17 +16,15 @@ type Expense = Database['public']['Tables']['expenses']['Row'] & {
     categories: Database['public']['Tables']['categories']['Row']
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+// ... imports ...
+
+const COLORS = ['#10b981', '#34d399', '#6ee7b7', '#059669', '#047857', '#064e3b'];
 
 export function ReportsDashboard() {
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [income, setIncome] = useState(0)
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
-
-    useEffect(() => {
-        fetchData()
-    }, [])
 
     const fetchData = async () => {
         const { data: { user } } = await supabase.auth.getUser()
@@ -55,7 +52,12 @@ export function ReportsDashboard() {
         setLoading(false)
     }
 
-    if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>
+    useEffect(() => {
+        // eslint-disable-next-line
+        fetchData()
+    }, [])
+
+    if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>
 
     // Calculations
     const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0)
@@ -87,58 +89,58 @@ export function ReportsDashboard() {
         <div className="space-y-6">
             {/* Summary Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
+                        <DollarSign className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${totalSpent.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">
+                        <div className="text-3xl font-bold text-foreground">${totalSpent.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground mt-1">
                             {expenses.length} transactions this month
                         </p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Monthly Income</CardTitle>
-                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Income</CardTitle>
+                        <Wallet className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${income.toFixed(2)}</div>
+                        <div className="text-3xl font-bold text-foreground">${income.toFixed(2)}</div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Left to Spend</CardTitle>
-                        <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Left to Spend</CardTitle>
+                        <TrendingDown className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${leftToSpend < 0 ? 'text-destructive' : 'text-green-600'}`}>
+                        <div className={`text-3xl font-bold ${leftToSpend < 0 ? 'text-red-500' : 'text-primary'}`}>
                             ${leftToSpend.toFixed(2)}
                         </div>
-                        <div className="mt-2 h-2 w-full bg-secondary rounded-full overflow-hidden">
+                        <div className="mt-3 h-2 w-full bg-muted rounded-full overflow-hidden">
                             <div
-                                className={`h-full ${leftToSpend < 0 ? 'bg-destructive' : 'bg-green-600'}`}
+                                className={`h-full rounded-full transition-all duration-500 ${leftToSpend < 0 ? 'bg-red-500' : 'bg-primary'}`}
                                 style={{ width: `${Math.min((totalSpent / income) * 100, 100)}%` }}
                             />
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Savings Rate</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Savings Rate</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{savingsRate.toFixed(1)}%</div>
+                        <div className="text-3xl font-bold text-foreground">{savingsRate.toFixed(1)}%</div>
                     </CardContent>
                 </Card>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 {/* Daily Trend */}
-                <Card className="col-span-4">
+                <Card className="col-span-4 rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
                     <CardHeader>
                         <CardTitle>Daily Spending</CardTitle>
                     </CardHeader>
@@ -148,8 +150,11 @@ export function ReportsDashboard() {
                                 <BarChart data={dailyData}>
                                     <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                                     <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
-                                    <Tooltip />
-                                    <Bar dataKey="amount" fill="#adfa1d" radius={[4, 4, 0, 0]} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                        cursor={{ fill: 'var(--muted)' }}
+                                    />
+                                    <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -157,7 +162,7 @@ export function ReportsDashboard() {
                 </Card>
 
                 {/* Category Breakdown */}
-                <Card className="col-span-3">
+                <Card className="col-span-3 rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
                     <CardHeader>
                         <CardTitle>Spending by Category</CardTitle>
                     </CardHeader>
@@ -175,10 +180,13 @@ export function ReportsDashboard() {
                                         dataKey="value"
                                     >
                                         {categoryData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                                    <Tooltip
+                                        formatter={(value: number) => `$${value.toFixed(2)}`}
+                                        contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                    />
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>

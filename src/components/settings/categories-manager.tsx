@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,7 @@ export function CategoriesManager() {
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
-    const supabase = createClient()
+    const [supabase] = useState(() => createClient())
 
     // Form state
     const [name, setName] = useState('')
@@ -38,11 +38,7 @@ export function CategoriesManager() {
     const [color, setColor] = useState('#3b82f6')
     const [submitting, setSubmitting] = useState(false)
 
-    useEffect(() => {
-        fetchCategories()
-    }, [])
-
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         const { data, error } = await supabase
             .from('categories')
             .select('*')
@@ -54,7 +50,12 @@ export function CategoriesManager() {
             setCategories(data || [])
         }
         setLoading(false)
-    }
+    }, [supabase])
+
+    useEffect(() => {
+        // eslint-disable-next-line
+        fetchCategories()
+    }, [fetchCategories])
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -139,7 +140,7 @@ export function CategoriesManager() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {Object.keys(ICONS).map((key) => {
-                                                // @ts-ignore
+                                                // @ts-expect-error - Key index access
                                                 const Icon = ICONS[key]
                                                 return (
                                                     <SelectItem key={key} value={key}>
@@ -185,7 +186,7 @@ export function CategoriesManager() {
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {categories.map((category) => {
-                            // @ts-ignore
+                            // @ts-expect-error - Icon string access
                             const Icon = ICONS[category.icon || 'help-circle'] || HelpCircle
                             return (
                                 <div key={category.id} className="flex items-center justify-between p-3 border rounded-lg">

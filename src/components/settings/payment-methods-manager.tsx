@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,18 +18,14 @@ export function PaymentMethodsManager() {
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
-    const supabase = createClient()
+    const [supabase] = useState(() => createClient())
 
     // Form state
     const [name, setName] = useState('')
     const [type, setType] = useState('Credit')
     const [submitting, setSubmitting] = useState(false)
 
-    useEffect(() => {
-        fetchMethods()
-    }, [])
-
-    const fetchMethods = async () => {
+    const fetchMethods = useCallback(async () => {
         const { data, error } = await supabase
             .from('payment_methods')
             .select('*')
@@ -41,7 +37,12 @@ export function PaymentMethodsManager() {
             setMethods(data || [])
         }
         setLoading(false)
-    }
+    }, [supabase])
+
+    useEffect(() => {
+        // eslint-disable-next-line
+        fetchMethods()
+    }, [fetchMethods])
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()

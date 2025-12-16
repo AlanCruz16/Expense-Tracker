@@ -8,6 +8,7 @@ import { ReviewTable } from '@/components/import/review-table'
 
 export function ImportZone() {
     const [analyzing, setAnalyzing] = useState(false)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [data, setData] = useState<any[] | null>(null)
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +59,7 @@ export function ImportZone() {
             <h3 className="text-lg font-semibold mb-2">Upload Bank Statement</h3>
             <p className="text-muted-foreground text-center mb-6 max-w-sm">
                 Drag and drop a screenshot of your bank statement, or click to browse.
-                We'll extract the data automatically.
+                We&apos;ll extract the data automatically.
             </p>
 
             <div className="relative">

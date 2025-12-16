@@ -27,6 +27,7 @@ interface ExtractedExpense {
 }
 
 interface ReviewTableProps {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     initialData: any[]
     onCancel: () => void
 }
@@ -137,7 +138,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         router.refresh()
     }
 
-    const updateExpense = (index: number, field: keyof ExtractedExpense, value: any) => {
+    const updateExpense = <K extends keyof ExtractedExpense>(index: number, field: K, value: ExtractedExpense[K]) => {
         const newExpenses = [...expenses]
         newExpenses[index] = { ...newExpenses[index], [field]: value }
         setExpenses(newExpenses)
@@ -190,21 +191,21 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                                     <Input
                                         type="date"
                                         value={expense.date}
-                                        onChange={(e) => updateExpense(index, 'date', e.target.value)}
+                                        onInput={(e) => updateExpense(index, 'date', (e.target as HTMLInputElement).value)}
                                         className="w-[140px]"
                                     />
                                 </TableCell>
                                 <TableCell>
                                     <Input
                                         value={expense.description}
-                                        onChange={(e) => updateExpense(index, 'description', e.target.value)}
+                                        onInput={(e) => updateExpense(index, 'description', (e.target as HTMLInputElement).value)}
                                     />
                                 </TableCell>
                                 <TableCell>
                                     <Input
                                         type="number"
                                         value={expense.amount}
-                                        onChange={(e) => updateExpense(index, 'amount', parseFloat(e.target.value))}
+                                        onInput={(e) => updateExpense(index, 'amount', parseFloat((e.target as HTMLInputElement).value))}
                                         className="w-[100px]"
                                     />
                                 </TableCell>

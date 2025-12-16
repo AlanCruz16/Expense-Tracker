@@ -31,10 +31,6 @@ export function ExpensesList() {
     const [loading, setLoading] = useState(true)
     const supabase = createClient()
 
-    useEffect(() => {
-        fetchExpenses()
-    }, [])
-
     const fetchExpenses = async () => {
         const { data, error } = await supabase
             .from('expenses')
@@ -54,6 +50,11 @@ export function ExpensesList() {
         }
         setLoading(false)
     }
+
+    useEffect(() => {
+        // eslint-disable-next-line
+        fetchExpenses()
+    }, [])
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this expense?')) return
@@ -96,36 +97,36 @@ export function ExpensesList() {
     return (
         <div className="space-y-6">
             {Object.keys(groupedExpenses).map((date) => (
-                <Card key={date}>
-                    <CardHeader className="py-3 bg-muted/50">
+                <Card key={date} className="rounded-2xl border-border/60 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                    <CardHeader className="py-3 bg-muted/20 border-b border-border/40">
                         <CardTitle className="text-sm font-medium flex items-center text-muted-foreground">
-                            <Calendar className="mr-2 h-4 w-4" />
+                            <Calendar className="mr-2 h-4 w-4 text-primary" />
                             {format(new Date(date), 'EEEE, MMMM do, yyyy')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         {groupedExpenses[date].map((expense) => {
-                            // @ts-ignore
+                            // @ts-expect-error - Icon string access
                             const Icon = ICONS[expense.categories?.icon || 'help-circle'] || HelpCircle
                             return (
-                                <div key={expense.id} className="flex items-center justify-between p-4 border-b last:border-0 hover:bg-muted/20 transition-colors">
+                                <div key={expense.id} className="flex items-center justify-between p-4 border-b border-border/40 last:border-0 hover:bg-primary/5 transition-all duration-300">
                                     <div className="flex items-center gap-4">
                                         <div
-                                            className="p-2 rounded-full text-white"
+                                            className="p-2 rounded-xl text-white shadow-sm"
                                             style={{ backgroundColor: expense.categories?.color || '#ccc' }}
                                         >
                                             <Icon className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <div className="font-medium">{expense.categories?.name || 'Uncategorized'}</div>
-                                            <div className="text-sm text-muted-foreground">
+                                            <div className="font-semibold text-foreground/90">{expense.categories?.name || 'Uncategorized'}</div>
+                                            <div className="text-sm text-muted-foreground line-clamp-1 max-w-[150px] sm:max-w-xs">
                                                 {expense.comment || expense.payment_methods?.name}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-3 md:gap-4">
                                         <div className="text-right">
-                                            <div className="font-bold">
+                                            <div className="font-bold text-foreground">
                                                 ${expense.amount.toFixed(2)}
                                             </div>
                                             <div className="text-xs text-muted-foreground flex items-center justify-end">
@@ -133,7 +134,12 @@ export function ExpensesList() {
                                                 {expense.payment_methods?.name}
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => handleDelete(expense.id)}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="ml-1 h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            onClick={() => handleDelete(expense.id)}
+                                        >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </div>

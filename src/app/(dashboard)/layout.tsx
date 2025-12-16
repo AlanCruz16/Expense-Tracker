@@ -28,7 +28,7 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex min-h-screen flex-col md:flex-row">
+        <div className="flex min-h-[100dvh] flex-col md:flex-row">
             {/* Sidebar */}
             <aside className="w-full md:w-64 bg-card border-r flex flex-col">
                 <div className="p-6 border-b">
