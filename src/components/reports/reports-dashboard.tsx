@@ -86,40 +86,34 @@ export function ReportsDashboard() {
     })
 
     return (
-        <div className="space-y-6">
-            {/* Summary Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
+        <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
+            {/* Bento Grid Layout */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                {/* Total Spent - Prominent */}
+                <Card className="col-span-2 md:col-span-1 glass border-0 shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
                         <DollarSign className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-foreground">${totalSpent.toFixed(2)}</div>
+                        <div className="text-2xl md:text-3xl font-bold text-foreground">${totalSpent.toFixed(2)}</div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {expenses.length} transactions this month
+                            {expenses.length} transactions
                         </p>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Income</CardTitle>
-                        <Wallet className="h-4 w-4 text-primary" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-3xl font-bold text-foreground">${income.toFixed(2)}</div>
-                    </CardContent>
-                </Card>
-                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
+
+                {/* Left to Spend - Critical Status */}
+                <Card className="col-span-2 md:col-span-1 glass border-0 shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Left to Spend</CardTitle>
                         <TrendingDown className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-3xl font-bold ${leftToSpend < 0 ? 'text-red-500' : 'text-primary'}`}>
+                        <div className={`text-2xl md:text-3xl font-bold ${leftToSpend < 0 ? 'text-red-500' : 'text-primary'}`}>
                             ${leftToSpend.toFixed(2)}
                         </div>
-                        <div className="mt-3 h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="mt-2 h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ${leftToSpend < 0 ? 'bg-red-500' : 'bg-primary'}`}
                                 style={{ width: `${Math.min((totalSpent / income) * 100, 100)}%` }}
@@ -127,67 +121,108 @@ export function ReportsDashboard() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
+
+                {/* Monthly Income */}
+                <Card className="glass border-0 shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Savings Rate</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Income</CardTitle>
+                        <Wallet className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-xl md:text-2xl font-bold text-foreground">${income.toFixed(0)}</div>
+                    </CardContent>
+                </Card>
+
+                {/* Savings Rate */}
+                <Card className="glass border-0 shadow-none">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Savings</CardTitle>
                         <TrendingUp className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-foreground">{savingsRate.toFixed(1)}%</div>
+                        <div className="text-xl md:text-2xl font-bold text-foreground">{savingsRate.toFixed(1)}%</div>
                     </CardContent>
                 </Card>
-            </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                {/* Daily Trend */}
-                <Card className="col-span-4 rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
+                {/* Daily Spending Graph - Wide Tile */}
+                <Card className="col-span-2 md:col-span-2 glass border-0 shadow-none">
                     <CardHeader>
-                        <CardTitle>Daily Spending</CardTitle>
+                        <CardTitle className="text-base">Daily Spending</CardTitle>
                     </CardHeader>
-                    <CardContent className="pl-2">
-                        <div className="h-[300px]">
+                    <CardContent className="pl-0">
+                        <div className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={dailyData}>
-                                    <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '8px', border: '1px solid var(--border)' }}
-                                        cursor={{ fill: 'var(--muted)' }}
+                                    <XAxis
+                                        dataKey="date"
+                                        stroke="#888888"
+                                        fontSize={10}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tick={{ fill: 'var(--muted-foreground)' }}
                                     />
-                                    <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                            borderRadius: '12px',
+                                            border: 'none',
+                                            backdropFilter: 'blur(10px)',
+                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                                        }}
+                                        cursor={{ fill: 'var(--muted)/0.2' }}
+                                    />
+                                    <Bar
+                                        dataKey="amount"
+                                        fill="var(--primary)"
+                                        radius={[4, 4, 0, 0]}
+                                        fillOpacity={0.8}
+                                    />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Category Breakdown */}
-                <Card className="col-span-3 rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm shadow-sm">
+                {/* Category Breakdown - Wide Tile */}
+                <Card className="col-span-2 md:col-span-2 glass border-0 shadow-none">
                     <CardHeader>
-                        <CardTitle>Spending by Category</CardTitle>
+                        <CardTitle className="text-base">Categories</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[300px]">
+                        <div className="h-[200px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
                                         data={categoryData}
                                         cx="50%"
                                         cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
+                                        innerRadius={50}
+                                        outerRadius={70}
+                                        paddingAngle={4}
                                         dataKey="value"
+                                        stroke="none"
                                     >
                                         {categoryData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
                                     <Tooltip
                                         formatter={(value: number) => `$${value.toFixed(2)}`}
-                                        contentStyle={{ backgroundColor: 'var(--card)', borderRadius: '8px', border: '1px solid var(--border)' }}
+                                        contentStyle={{
+                                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                            borderRadius: '12px',
+                                            border: 'none',
+                                            backdropFilter: 'blur(10px)',
+                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                                        }}
                                     />
-                                    <Legend />
+                                    <Legend
+                                        verticalAlign="bottom"
+                                        height={36}
+                                        iconType="circle"
+                                        iconSize={8}
+                                        wrapperStyle={{ fontSize: '10px' }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>

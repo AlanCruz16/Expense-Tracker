@@ -11,6 +11,7 @@ import {
     Upload
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MobileNav } from '@/components/ui/mobile-nav'
 
 export default async function DashboardLayout({
     children,
@@ -30,7 +31,7 @@ export default async function DashboardLayout({
     return (
         <div className="flex min-h-[100dvh] flex-col md:flex-row">
             {/* Sidebar */}
-            <aside className="w-full md:w-64 bg-card border-r flex flex-col">
+            <aside className="hidden md:flex w-64 bg-card border-r flex-col fixed inset-y-0 z-50">
                 <div className="p-6 border-b">
                     <h1 className="text-2xl font-bold tracking-tight">Expense App</h1>
                 </div>
@@ -85,9 +86,10 @@ export default async function DashboardLayout({
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 bg-background">
+            <main className="flex-1 bg-background md:pl-64 pb-20 md:pb-0">
                 {children}
             </main>
+            <MobileNav />
         </div>
     )
 }
