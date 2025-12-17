@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns'
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Legend } from 'recharts'
 import { Database } from '@/types/supabase'
 
 // I need to install Progress component or build it. I'll assume I have it or use a div.

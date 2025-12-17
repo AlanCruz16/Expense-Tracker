@@ -6,8 +6,7 @@ import {
     PlusCircle,
     CreditCard,
     Settings,
-    PieChart,
-    Upload
+    PieChart
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePathname } from 'next/navigation'
