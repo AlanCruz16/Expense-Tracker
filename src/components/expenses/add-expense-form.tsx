@@ -130,13 +130,24 @@ export function AddExpenseForm() {
                                 <FormLabel className="block text-center text-xs font-semibold text-muted-foreground uppercase tracking-widest">Amount</FormLabel>
                                 <FormControl>
                                     <div className="flex items-center justify-center gap-1">
-                                        <span className="text-3xl font-bold text-primary">$</span>
+                                        <span className="text-6xl font-bold text-primary pb-2">$</span>
                                         <Input
                                             type="number"
                                             step="0.01"
-                                            className="w-48 text-7xl font-bold border-none shadow-none text-left p-0 h-24 bg-transparent focus-visible:ring-0 placeholder:text-muted-foreground/20 leading-none"
+                                            className="w-48 text-7xl font-bold border-none shadow-none text-left p-0 h-24 bg-transparent focus-visible:ring-0 placeholder:text-muted-foreground/20 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             placeholder="0"
                                             {...field}
+                                            onFocus={(e) => {
+                                                if (field.value === 0) {
+                                                    field.onChange('')
+                                                }
+                                            }}
+                                            onBlur={(e) => {
+                                                if (e.target.value === '') {
+                                                    field.onChange(0)
+                                                }
+                                                field.onBlur()
+                                            }}
                                         />
                                     </div>
                                 </FormControl>

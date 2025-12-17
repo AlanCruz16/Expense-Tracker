@@ -18,7 +18,15 @@ type Expense = Database['public']['Tables']['expenses']['Row'] & {
 
 // ... imports ...
 
-const COLORS = ['#10b981', '#34d399', '#6ee7b7', '#059669', '#047857', '#064e3b'];
+const COLORS = [
+    '#3b82f6', // Blue
+    '#8b5cf6', // Violet
+    '#ec4899', // Pink
+    '#f97316', // Orange
+    '#10b981', // Emerald
+    '#06b6d4', // Cyan
+    '#eab308'  // Yellow
+];
 
 export function ReportsDashboard() {
     const [expenses, setExpenses] = useState<Expense[]>([])

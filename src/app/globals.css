@@ -50,9 +50,11 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.55 0.2 145); /* Vibrant Green */
+  --primary: oklch(0.55 0.2 145);
+  /* Vibrant Green */
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.95 0.05 145); /* Light Green tint */
+  --secondary: oklch(0.95 0.05 145);
+  /* Light Green tint */
   --secondary-foreground: oklch(0.25 0.1 145);
   --muted: oklch(0.96 0.02 145);
   --muted-foreground: oklch(0.556 0 0);
@@ -78,13 +80,16 @@
 }
 
 .dark {
-  --background: oklch(0.12 0.02 145); /* Dark Green-tinted Black */
+  --background: oklch(0.12 0.02 145);
+  /* Dark Green-tinted Black */
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.18 0.03 145); /* Slightly lighter dark green */
+  --card: oklch(0.18 0.03 145);
+  /* Slightly lighter dark green */
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.18 0.03 145);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.2 145); /* Brighter Green for Dark Mode */
+  --primary: oklch(0.65 0.2 145);
+  /* Brighter Green for Dark Mode */
   --primary-foreground: oklch(0.145 0 0);
   --secondary: oklch(0.25 0.05 145);
   --secondary-foreground: oklch(0.985 0 0);
@@ -115,10 +120,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   .glass {
-    @apply bg-background/60 backdrop-blur-lg border-t border-border/50;
+    @apply bg-background/70 backdrop-blur-xl backdrop-saturate-150 border-t border-b-0 border-x-0 border-white/20 shadow-sm;
   }
 }
