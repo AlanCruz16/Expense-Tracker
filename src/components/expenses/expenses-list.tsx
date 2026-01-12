@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { format } from 'date-fns'
+import { format, parse } from 'date-fns'
 import { Loader2, Trash2, Calendar, CreditCard, Utensils, Car, ShoppingBag, Film, ShoppingCart, Zap, Activity, Plane, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -101,7 +101,7 @@ export function ExpensesList() {
                     <CardHeader className="py-3 bg-muted/20 border-b border-border/40">
                         <CardTitle className="text-sm font-medium flex items-center text-muted-foreground">
                             <Calendar className="mr-2 h-4 w-4 text-primary" />
-                            {format(new Date(date), 'EEEE, MMMM do, yyyy')}
+                            {format(parse(date, 'yyyy-MM-dd', new Date()), 'EEEE, MMMM do, yyyy')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
