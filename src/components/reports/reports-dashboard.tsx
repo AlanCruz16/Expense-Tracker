@@ -68,12 +68,18 @@ export function ReportsDashboard() {
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>
 
     // Calculations
-    const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0)
-    const leftToSpend = income - totalSpent
+    const actualExpenses = expenses.filter(e => e.categories?.name !== 'Savings')
+    const totalSpent = actualExpenses.reduce((sum, e) => sum + e.amount, 0)
+
+    // Left to spend logic: Income - Total Outflows (Expenses + Savings Transfers)
+    // We use the original 'expenses' array here because it includes everything that left the account
+    const totalOutflows = expenses.reduce((sum, e) => sum + e.amount, 0)
+    const leftToSpend = income - totalOutflows
+
     const savingsRate = income > 0 ? ((income - totalSpent) / income) * 100 : 0
 
     // Category Data for Pie Chart
-    const categoryData = Object.values(expenses.reduce((acc, e) => {
+    const categoryData = Object.values(actualExpenses.reduce((acc, e) => {
         const name = e.categories?.name || 'Uncategorized'
         if (!acc[name]) acc[name] = { name, value: 0 }
         acc[name].value += e.amount
@@ -84,7 +90,7 @@ export function ReportsDashboard() {
     const days = eachDayOfInterval({ start: startOfMonth(new Date()), end: new Date() })
     const dailyData = days.map(day => {
         const dateStr = format(day, 'yyyy-MM-dd')
-        const amount = expenses
+        const amount = actualExpenses
             .filter(e => e.date === dateStr)
             .reduce((sum, e) => sum + e.amount, 0)
         return {
@@ -106,7 +112,7 @@ export function ReportsDashboard() {
                     <CardContent>
                         <div className="text-2xl md:text-3xl font-bold text-foreground">${totalSpent.toFixed(2)}</div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {expenses.length} transactions
+                            {actualExpenses.length} transactions
                         </p>
                     </CardContent>
                 </Card>
@@ -124,14 +130,14 @@ export function ReportsDashboard() {
                         <div className="mt-2 h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ${leftToSpend < 0 ? 'bg-red-500' : 'bg-primary'}`}
-                                style={{ width: `${Math.min((totalSpent / income) * 100, 100)}%` }}
+                                style={{ width: `${Math.min((totalOutflows / income) * 100, 100)}%` }}
                             />
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Monthly Income */}
-                <Card className="glass border-0 shadow-none">
+                <Card className="hidden md:block glass border-0 shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Income</CardTitle>
                         <Wallet className="h-4 w-4 text-primary" />
@@ -142,7 +148,7 @@ export function ReportsDashboard() {
                 </Card>
 
                 {/* Savings Rate */}
-                <Card className="glass border-0 shadow-none">
+                <Card className="hidden md:block glass border-0 shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">Savings</CardTitle>
                         <TrendingUp className="h-4 w-4 text-primary" />

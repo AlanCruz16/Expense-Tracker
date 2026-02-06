@@ -67,11 +67,17 @@ export function AddExpenseForm() {
             ])
 
             if (catRes.data) setCategories(catRes.data)
-            if (methodRes.data) setMethods(methodRes.data)
 
-            // Set defaults if available
-            if (methodRes.data && methodRes.data.length > 0) {
-                form.setValue('payment_method_id', methodRes.data[0].id)
+            if (methodRes.data) {
+                setMethods(methodRes.data)
+
+                // Set defaults if available
+                if (methodRes.data.length > 0) {
+                    const lastMethodId = localStorage.getItem('last_payment_method_id')
+                    const methodExists = lastMethodId && methodRes.data.some(m => m.id === lastMethodId)
+
+                    form.setValue('payment_method_id', methodExists ? lastMethodId! : methodRes.data[0].id)
+                }
             }
 
             setLoading(false)
@@ -101,6 +107,10 @@ export function AddExpenseForm() {
             toast.error('Failed to add expense')
         } else {
             toast.success('Expense added successfully')
+
+            // Save last used payment method
+            localStorage.setItem('last_payment_method_id', values.payment_method_id)
+
             form.reset({
                 amount: 0,
                 date: new Date(),
