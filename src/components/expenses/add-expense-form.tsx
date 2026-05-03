@@ -66,7 +66,19 @@ export function AddExpenseForm() {
                 supabase.from('payment_methods').select('*').order('name')
             ])
 
-            if (catRes.data) setCategories(catRes.data)
+            if (catRes.data) {
+                setCategories(catRes.data)
+
+                // Restore last used category if available
+                if (catRes.data.length > 0) {
+                    const lastCategoryId = localStorage.getItem('last_category_id')
+                    const categoryExists = lastCategoryId && catRes.data.some(c => c.id === lastCategoryId)
+
+                    if (categoryExists) {
+                        form.setValue('category_id', lastCategoryId!)
+                    }
+                }
+            }
 
             if (methodRes.data) {
                 setMethods(methodRes.data)
@@ -108,13 +120,14 @@ export function AddExpenseForm() {
         } else {
             toast.success('Expense added successfully')
 
-            // Save last used payment method
+            // Save last used selections
             localStorage.setItem('last_payment_method_id', values.payment_method_id)
+            localStorage.setItem('last_category_id', values.category_id)
 
             form.reset({
                 amount: 0,
                 date: new Date(),
-                category_id: '',
+                category_id: values.category_id, // Keep last used category
                 payment_method_id: values.payment_method_id, // Keep last used method
                 comment: '',
             })
@@ -179,7 +192,7 @@ export function AddExpenseForm() {
                                     <FormLabel className="flex items-center gap-2 text-muted-foreground">
                                         <Tag className="w-4 h-4" /> Category
                                     </FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger className="h-12 rounded-xl border-border/50 bg-card/50">
                                                 <SelectValue placeholder="Select Category" />
@@ -206,7 +219,7 @@ export function AddExpenseForm() {
                                     <FormLabel className="flex items-center gap-2 text-muted-foreground">
                                         <Wallet className="w-4 h-4" /> Wallet
                                     </FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger className="h-12 rounded-xl border-border/50 bg-card/50">
                                                 <SelectValue placeholder="Select Wallet" />
