@@ -1,44 +1,74 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns'
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react'
+import {
+    startOfMonth, endOfMonth, format, subMonths,
+    eachDayOfInterval, eachMonthOfInterval, isSameMonth, parseISO
+} from 'date-fns'
+import {
+    Loader2, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
+    CalendarDays, ChevronLeft, ChevronRight, BarChart3
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Legend } from 'recharts'
+import { Button } from '@/components/ui/button'
+import {
+    ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
+    LineChart, Line, PieChart, Pie, Cell, CartesianGrid, Area, AreaChart
+} from 'recharts'
 import { Database } from '@/types/supabase'
-
-// I need to install Progress component or build it. I'll assume I have it or use a div.
-// I'll use a simple div for progress if Shadcn Progress isn't installed (it wasn't in my list).
-// Actually, I can just use a styled div.
 
 type Expense = Database['public']['Tables']['expenses']['Row'] & {
     categories: Database['public']['Tables']['categories']['Row']
 }
 
-// ... imports ...
+const CATEGORY_COLORS = [
+    'oklch(0.65 0.20 145)',   // Primary green
+    'oklch(0.60 0.18 260)',   // Blue-violet
+    'oklch(0.65 0.22 330)',   // Pink
+    'oklch(0.70 0.18 60)',    // Orange
+    'oklch(0.70 0.15 180)',   // Teal
+    'oklch(0.65 0.15 290)',   // Purple
+    'oklch(0.75 0.15 90)',    // Yellow-green
+]
 
-const COLORS = [
-    '#3b82f6', // Blue
-    '#8b5cf6', // Violet
-    '#ec4899', // Pink
-    '#f97316', // Orange
-    '#10b981', // Emerald
-    '#06b6d4', // Cyan
-    '#eab308'  // Yellow
-];
+const MONTH_COMPARISON_COLORS = [
+    'oklch(0.55 0.20 145)',   // Current month (primary)
+    'oklch(0.75 0.10 145)',   // Previous month (muted)
+]
+
+// Custom tooltip for recharts
+function CustomTooltip({ active, payload, label }: any) {
+    if (!active || !payload?.length) return null
+    return (
+        <div className="rounded-xl border border-border/50 bg-background/90 backdrop-blur-xl p-3 shadow-lg">
+            <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+            {payload.map((entry: any, i: number) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                    <span className="text-muted-foreground">{entry.name}:</span>
+                    <span className="font-semibold text-foreground">${Number(entry.value).toFixed(2)}</span>
+                </div>
+            ))}
+        </div>
+    )
+}
 
 export function ReportsDashboard() {
-    const [expenses, setExpenses] = useState<Expense[]>([])
+    const [allExpenses, setAllExpenses] = useState<Expense[]>([])
     const [income, setIncome] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [selectedDate, setSelectedDate] = useState(new Date())
     const supabase = createClient()
+
+    // How many months of history to load
+    const HISTORY_MONTHS = 6
 
     const fetchData = async () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const start = startOfMonth(new Date()).toISOString()
+        const start = startOfMonth(subMonths(new Date(), HISTORY_MONTHS - 1)).toISOString()
         const end = endOfMonth(new Date()).toISOString()
 
         const [expenseRes, profileRes] = await Promise.all([
@@ -46,7 +76,8 @@ export function ReportsDashboard() {
                 .from('expenses')
                 .select('*, categories(*)')
                 .gte('date', start)
-                .lte('date', end),
+                .lte('date', end)
+                .order('date', { ascending: false }),
             supabase
                 .from('profiles')
                 .select('monthly_income')
@@ -54,195 +85,498 @@ export function ReportsDashboard() {
                 .single()
         ])
 
-        if (expenseRes.data) setExpenses(expenseRes.data as Expense[])
+        if (expenseRes.data) setAllExpenses(expenseRes.data as Expense[])
         if (profileRes.data) setIncome(profileRes.data.monthly_income || 0)
 
         setLoading(false)
     }
 
     useEffect(() => {
-        // eslint-disable-next-line
         fetchData()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>
+    // ── Derived data ──
 
-    // Calculations
-    const actualExpenses = expenses.filter(e => e.categories?.name !== 'Savings')
-    const totalSpent = actualExpenses.reduce((sum, e) => sum + e.amount, 0)
+    const selectedMonthStart = startOfMonth(selectedDate)
+    const selectedMonthEnd = endOfMonth(selectedDate)
+    const prevMonthStart = startOfMonth(subMonths(selectedDate, 1))
+    const prevMonthEnd = endOfMonth(subMonths(selectedDate, 1))
 
-    // Left to spend logic: Income - Total Outflows (Expenses + Savings Transfers)
-    // We use the original 'expenses' array here because it includes everything that left the account
-    const totalOutflows = expenses.reduce((sum, e) => sum + e.amount, 0)
-    const leftToSpend = income - totalOutflows
+    // Expenses for selected month (excluding savings)
+    const selectedMonthExpenses = useMemo(() =>
+        allExpenses.filter(e => {
+            const d = parseISO(e.date)
+            return d >= selectedMonthStart && d <= selectedMonthEnd && e.categories?.name !== 'Savings'
+        }),
+        [allExpenses, selectedMonthStart, selectedMonthEnd]
+    )
 
-    const savingsRate = income > 0 ? ((income - totalSpent) / income) * 100 : 0
+    // Expenses for previous month (excluding savings)
+    const prevMonthExpenses = useMemo(() =>
+        allExpenses.filter(e => {
+            const d = parseISO(e.date)
+            return d >= prevMonthStart && d <= prevMonthEnd && e.categories?.name !== 'Savings'
+        }),
+        [allExpenses, prevMonthStart, prevMonthEnd]
+    )
 
-    // Category Data for Pie Chart
-    const categoryData = Object.values(actualExpenses.reduce((acc, e) => {
-        const name = e.categories?.name || 'Uncategorized'
-        if (!acc[name]) acc[name] = { name, value: 0 }
-        acc[name].value += e.amount
-        return acc
-    }, {} as Record<string, { name: string, value: number }>))
+    // All expenses excluding savings
+    const allActualExpenses = useMemo(() =>
+        allExpenses.filter(e => e.categories?.name !== 'Savings'),
+        [allExpenses]
+    )
 
-    // Daily Data for Bar Chart
-    const days = eachDayOfInterval({ start: startOfMonth(new Date()), end: new Date() })
-    const dailyData = days.map(day => {
-        const dateStr = format(day, 'yyyy-MM-dd')
-        const amount = actualExpenses
-            .filter(e => e.date === dateStr)
-            .reduce((sum, e) => sum + e.amount, 0)
-        return {
-            date: format(day, 'd'),
-            amount
-        }
-    })
+    const totalSelectedMonth = selectedMonthExpenses.reduce((s, e) => s + e.amount, 0)
+    const totalPrevMonth = prevMonthExpenses.reduce((s, e) => s + e.amount, 0)
+    const monthChange = totalPrevMonth > 0
+        ? ((totalSelectedMonth - totalPrevMonth) / totalPrevMonth) * 100
+        : 0
+
+    const avgDaily = selectedMonthExpenses.length > 0
+        ? totalSelectedMonth / eachDayOfInterval({ start: selectedMonthStart, end: new Date() > selectedMonthEnd ? selectedMonthEnd : new Date() }).length
+        : 0
+
+    // ── Chart data builders ──
+
+    // 1. Month-over-month comparison (bar chart)
+    const monthlyComparisonData = useMemo(() => {
+        const months = eachMonthOfInterval({
+            start: subMonths(new Date(), HISTORY_MONTHS - 1),
+            end: new Date()
+        })
+        return months.map(month => {
+            const monthExpenses = allActualExpenses.filter(e =>
+                isSameMonth(parseISO(e.date), month)
+            )
+            const total = monthExpenses.reduce((s, e) => s + e.amount, 0)
+            return {
+                month: format(month, 'MMM yy'),
+                total,
+                isSelected: isSameMonth(month, selectedDate)
+            }
+        })
+    }, [allActualExpenses, selectedDate])
+
+    // 2. Category breakdown for selected month (pie + bar)
+    const categoryBreakdown = useMemo(() => {
+        const map: Record<string, { name: string; current: number; previous: number }> = {}
+        selectedMonthExpenses.forEach(e => {
+            const name = e.categories?.name || 'Uncategorized'
+            if (!map[name]) map[name] = { name, current: 0, previous: 0 }
+            map[name].current += e.amount
+        })
+        prevMonthExpenses.forEach(e => {
+            const name = e.categories?.name || 'Uncategorized'
+            if (!map[name]) map[name] = { name, current: 0, previous: 0 }
+            map[name].previous += e.amount
+        })
+        return Object.values(map).sort((a, b) => b.current - a.current)
+    }, [selectedMonthExpenses, prevMonthExpenses])
+
+    // 3. Category pie data
+    const categoryPieData = useMemo(() =>
+        categoryBreakdown.filter(c => c.current > 0).map(c => ({
+            name: c.name,
+            value: c.current
+        })),
+        [categoryBreakdown]
+    )
+
+    // 4. Daily spending trend for selected month (area chart)
+    const dailyTrend = useMemo(() => {
+        const endDate = new Date() > selectedMonthEnd ? selectedMonthEnd : new Date()
+        if (endDate < selectedMonthStart) return []
+        const days = eachDayOfInterval({ start: selectedMonthStart, end: endDate })
+        let cumulative = 0
+        return days.map(day => {
+            const dateStr = format(day, 'yyyy-MM-dd')
+            const dayTotal = selectedMonthExpenses
+                .filter(e => e.date === dateStr)
+                .reduce((s, e) => s + e.amount, 0)
+            cumulative += dayTotal
+            return {
+                date: format(day, 'MMM d'),
+                daily: dayTotal,
+                cumulative
+            }
+        })
+    }, [selectedMonthExpenses, selectedMonthStart, selectedMonthEnd])
+
+    // 5. Top expenses for selected month
+    const topExpenses = useMemo(() =>
+        [...selectedMonthExpenses]
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 5),
+        [selectedMonthExpenses]
+    )
+
+    // ── Navigation ──
+    const canGoForward = !isSameMonth(selectedDate, new Date())
+    const navigateMonth = (dir: number) => {
+        const next = dir > 0 ? subMonths(selectedDate, -1) : subMonths(selectedDate, 1)
+        if (next <= new Date()) setSelectedDate(next)
+    }
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center p-16">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
 
     return (
-        <div className="space-y-4 md:space-y-6 pb-20 md:pb-0">
-            {/* Bento Grid Layout */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                {/* Total Spent - Prominent */}
-                <Card className="col-span-2 md:col-span-1 glass border-0 shadow-none">
+        <div className="space-y-6 pb-24 md:pb-0">
+            {/* ── Month Selector ── */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigateMonth(-1)}
+                        className="h-9 w-9 rounded-full"
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-primary" />
+                        <span className="text-lg font-semibold">
+                            {format(selectedDate, 'MMMM yyyy')}
+                        </span>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigateMonth(1)}
+                        disabled={!canGoForward}
+                        className="h-9 w-9 rounded-full"
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+                {!isSameMonth(selectedDate, new Date()) && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedDate(new Date())}
+                        className="text-xs"
+                    >
+                        Current Month
+                    </Button>
+                )}
+            </div>
+
+            {/* ── Summary Cards ── */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                <Card className="glass border-0 shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
-                        <DollarSign className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Total Spent
+                        </CardTitle>
+                        <BarChart3 className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl md:text-3xl font-bold text-foreground">${totalSpent.toFixed(2)}</div>
+                        <div className="text-2xl font-bold text-foreground">
+                            ${totalSelectedMonth.toFixed(2)}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {actualExpenses.length} transactions
+                            {selectedMonthExpenses.length} transactions
                         </p>
                     </CardContent>
                 </Card>
 
-                {/* Left to Spend - Critical Status */}
+                <Card className="glass border-0 shadow-none">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            vs Last Month
+                        </CardTitle>
+                        {monthChange >= 0 ? (
+                            <ArrowUpRight className="h-4 w-4 text-red-500" />
+                        ) : (
+                            <ArrowDownRight className="h-4 w-4 text-emerald-500" />
+                        )}
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold ${monthChange >= 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                            {monthChange >= 0 ? '+' : ''}{monthChange.toFixed(1)}%
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            ${Math.abs(totalSelectedMonth - totalPrevMonth).toFixed(2)} {monthChange >= 0 ? 'more' : 'less'}
+                        </p>
+                    </CardContent>
+                </Card>
+
                 <Card className="col-span-2 md:col-span-1 glass border-0 shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Left to Spend</CardTitle>
-                        <TrendingDown className="h-4 w-4 text-primary" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className={`text-2xl md:text-3xl font-bold ${leftToSpend < 0 ? 'text-red-500' : 'text-primary'}`}>
-                            ${leftToSpend.toFixed(2)}
-                        </div>
-                        <div className="mt-2 h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
-                            <div
-                                className={`h-full rounded-full transition-all duration-500 ${leftToSpend < 0 ? 'bg-red-500' : 'bg-primary'}`}
-                                style={{ width: `${Math.min((totalOutflows / income) * 100, 100)}%` }}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Monthly Income */}
-                <Card className="hidden md:block glass border-0 shadow-none">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Income</CardTitle>
-                        <Wallet className="h-4 w-4 text-primary" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-xl md:text-2xl font-bold text-foreground">${income.toFixed(0)}</div>
-                    </CardContent>
-                </Card>
-
-                {/* Savings Rate */}
-                <Card className="hidden md:block glass border-0 shadow-none">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">Savings</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Daily Average
+                        </CardTitle>
                         <TrendingUp className="h-4 w-4 text-primary" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-xl md:text-2xl font-bold text-foreground">{savingsRate.toFixed(1)}%</div>
-                    </CardContent>
-                </Card>
-
-                {/* Daily Spending Graph - Wide Tile */}
-                <Card className="col-span-2 md:col-span-2 glass border-0 shadow-none">
-                    <CardHeader>
-                        <CardTitle className="text-base">Daily Spending</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pl-0">
-                        <div className="h-[200px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={dailyData}>
-                                    <XAxis
-                                        dataKey="date"
-                                        stroke="#888888"
-                                        fontSize={10}
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tick={{ fill: 'var(--muted-foreground)' }}
-                                    />
-                                    <Tooltip
-                                        contentStyle={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                            borderRadius: '12px',
-                                            border: 'none',
-                                            backdropFilter: 'blur(10px)',
-                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                                        }}
-                                        cursor={{ fill: 'var(--muted)/0.2' }}
-                                    />
-                                    <Bar
-                                        dataKey="amount"
-                                        fill="var(--primary)"
-                                        radius={[4, 4, 0, 0]}
-                                        fillOpacity={0.8}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div className="text-2xl font-bold text-foreground">
+                            ${avgDaily.toFixed(2)}
                         </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            per day
+                        </p>
                     </CardContent>
                 </Card>
+            </div>
 
-                {/* Category Breakdown - Wide Tile */}
-                <Card className="col-span-2 md:col-span-2 glass border-0 shadow-none">
+            {/* ── Cumulative Spending Trend ── */}
+            <Card className="glass border-0 shadow-none">
+                <CardHeader>
+                    <CardTitle className="text-base">Spending Trend</CardTitle>
+                    <p className="text-xs text-muted-foreground">Daily & cumulative spending for {format(selectedDate, 'MMMM')}</p>
+                </CardHeader>
+                <CardContent className="pl-0 pr-2">
+                    <div className="h-[260px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={dailyTrend}>
+                                <defs>
+                                    <linearGradient id="gradCumulative" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="oklch(0.65 0.20 145)" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="oklch(0.65 0.20 145)" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+                                <XAxis
+                                    dataKey="date"
+                                    stroke="var(--muted-foreground)"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    interval="preserveStartEnd"
+                                />
+                                <YAxis
+                                    stroke="var(--muted-foreground)"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(v) => `$${v}`}
+                                    width={50}
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Area
+                                    type="monotone"
+                                    dataKey="cumulative"
+                                    name="Cumulative"
+                                    stroke="oklch(0.65 0.20 145)"
+                                    strokeWidth={2}
+                                    fill="url(#gradCumulative)"
+                                />
+                                <Bar
+                                    dataKey="daily"
+                                    name="Daily"
+                                    fill="oklch(0.55 0.20 145)"
+                                    fillOpacity={0.6}
+                                    radius={[3, 3, 0, 0]}
+                                    barSize={8}
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* ── Month-over-Month Comparison ── */}
+            <Card className="glass border-0 shadow-none">
+                <CardHeader>
+                    <CardTitle className="text-base">Monthly Comparison</CardTitle>
+                    <p className="text-xs text-muted-foreground">Total spending across the last {HISTORY_MONTHS} months</p>
+                </CardHeader>
+                <CardContent className="pl-0 pr-2">
+                    <div className="h-[220px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={monthlyComparisonData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} />
+                                <XAxis
+                                    dataKey="month"
+                                    stroke="var(--muted-foreground)"
+                                    fontSize={11}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis
+                                    stroke="var(--muted-foreground)"
+                                    fontSize={10}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    tickFormatter={(v) => `$${v}`}
+                                    width={55}
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar
+                                    dataKey="total"
+                                    name="Total"
+                                    radius={[6, 6, 0, 0]}
+                                    barSize={32}
+                                >
+                                    {monthlyComparisonData.map((entry, index) => (
+                                        <Cell
+                                            key={`bar-${index}`}
+                                            fill={entry.isSelected ? 'oklch(0.55 0.20 145)' : 'oklch(0.75 0.10 145)'}
+                                            fillOpacity={entry.isSelected ? 1 : 0.6}
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* ── Category Breakdown: Pie + List ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="glass border-0 shadow-none">
                     <CardHeader>
-                        <CardTitle className="text-base">Categories</CardTitle>
+                        <CardTitle className="text-base">Category Breakdown</CardTitle>
+                        <p className="text-xs text-muted-foreground">{format(selectedDate, 'MMMM yyyy')}</p>
                     </CardHeader>
                     <CardContent>
-                        <div className="h-[200px]">
+                        <div className="h-[240px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
-                                        data={categoryData}
+                                        data={categoryPieData}
                                         cx="50%"
                                         cy="50%"
-                                        innerRadius={50}
-                                        outerRadius={70}
-                                        paddingAngle={4}
+                                        innerRadius={55}
+                                        outerRadius={80}
+                                        paddingAngle={3}
                                         dataKey="value"
                                         stroke="none"
                                     >
-                                        {categoryData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        {categoryPieData.map((_, index) => (
+                                            <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip
-                                        formatter={(value: number) => `$${value.toFixed(2)}`}
-                                        contentStyle={{
-                                            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                                            borderRadius: '12px',
-                                            border: 'none',
-                                            backdropFilter: 'blur(10px)',
-                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                                        }}
-                                    />
+                                    <Tooltip content={<CustomTooltip />} />
                                     <Legend
                                         verticalAlign="bottom"
                                         height={36}
                                         iconType="circle"
                                         iconSize={8}
-                                        wrapperStyle={{ fontSize: '10px' }}
+                                        wrapperStyle={{ fontSize: '11px' }}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Category vs Previous Month */}
+                <Card className="glass border-0 shadow-none">
+                    <CardHeader>
+                        <CardTitle className="text-base">Category Trends</CardTitle>
+                        <p className="text-xs text-muted-foreground">
+                            {format(selectedDate, 'MMM')} vs {format(subMonths(selectedDate, 1), 'MMM')}
+                        </p>
+                    </CardHeader>
+                    <CardContent className="pl-0 pr-2">
+                        <div className="h-[240px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={categoryBreakdown.slice(0, 6)}
+                                    layout="vertical"
+                                    margin={{ left: 10, right: 10 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.5} horizontal={false} />
+                                    <XAxis
+                                        type="number"
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tickFormatter={(v) => `$${v}`}
+                                    />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="name"
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                        tickLine={false}
+                                        axisLine={false}
+                                        width={80}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                                    <Bar
+                                        dataKey="current"
+                                        name={format(selectedDate, 'MMM')}
+                                        fill={MONTH_COMPARISON_COLORS[0]}
+                                        radius={[0, 4, 4, 0]}
+                                        barSize={10}
+                                    />
+                                    <Bar
+                                        dataKey="previous"
+                                        name={format(subMonths(selectedDate, 1), 'MMM')}
+                                        fill={MONTH_COMPARISON_COLORS[1]}
+                                        radius={[0, 4, 4, 0]}
+                                        barSize={10}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
+
+            {/* ── Top Expenses ── */}
+            <Card className="glass border-0 shadow-none">
+                <CardHeader>
+                    <CardTitle className="text-base">Top Expenses</CardTitle>
+                    <p className="text-xs text-muted-foreground">Largest transactions in {format(selectedDate, 'MMMM yyyy')}</p>
+                </CardHeader>
+                <CardContent>
+                    {topExpenses.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-4 text-center">No expenses for this month.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {topExpenses.map((expense, i) => {
+                                const pct = totalSelectedMonth > 0 ? (expense.amount / totalSelectedMonth) * 100 : 0
+                                return (
+                                    <div key={expense.id} className="flex items-center gap-3 group">
+                                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
+                                            {i + 1}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="text-sm font-medium truncate">
+                                                        {expense.comment || expense.categories?.name || 'Expense'}
+                                                    </span>
+                                                    {expense.comment && expense.categories?.name && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+                                                            {expense.categories.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-sm font-semibold ml-2 shrink-0">
+                                                    ${expense.amount.toFixed(2)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full bg-primary/60 transition-all duration-700 ease-out"
+                                                        style={{ width: `${pct}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-[10px] text-muted-foreground w-8 text-right">
+                                                    {pct.toFixed(0)}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     )
 }
