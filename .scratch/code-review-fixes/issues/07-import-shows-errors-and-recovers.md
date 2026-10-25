@@ -4,9 +4,9 @@
 
 **Blocked by:** 00 (Set up Vitest)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A non-OK response from the analysis endpoint shows an error toast (using the server's message where available)
-- [ ] A network failure shows an error toast
-- [ ] In every failure case the button and file input return to their idle state, so the user can retry without reloading
-- [ ] A successful analysis behaves as before
+- [x] A non-OK response from the analysis endpoint shows an error toast (using the server's message where available)
+- [x] A network failure shows an error toast
+- [x] In every failure case the button and file input return to their idle state, so the user can retry without reloading
+- [x] A successful analysis behaves as before
