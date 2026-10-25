@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { MAX_IMAGE_BYTES, decodedByteLength } from '@/lib/receipt-image'
 import { google } from '@ai-sdk/google'
 import { generateObject } from 'ai'
 import { z } from 'zod'
@@ -6,18 +7,25 @@ import { z } from 'zod'
 export const maxDuration = 60 // Allow longer timeout for vision
 
 export async function POST(req: Request) {
+    // Every request is a billed Gemini call, so only signed-in users get one
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return new Response('Unauthorized', { status: 401 })
+    }
+
     const { image } = await req.json()
 
-    if (!image) {
+    if (typeof image !== 'string' || !image) {
         return new Response('No image provided', { status: 400 })
     }
 
-    try {
-        // Convert base64 data URL to just base64 string if needed
-        // The Vercel AI SDK Google provider expects base64 for images in a specific way or just the data URL.
-        // Let's check the docs or assume standard behavior. 
-        // Actually, for 'image' part in content, it usually handles data URLs.
+    if (decodedByteLength(image) > MAX_IMAGE_BYTES) {
+        return new Response('Image too large', { status: 413 })
+    }
 
+    try {
         const { object } = await generateObject({
             model: google('gemini-2.0-flash'),
             schema: z.object({
