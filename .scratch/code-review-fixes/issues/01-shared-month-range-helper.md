@@ -4,9 +4,16 @@
 
 **Blocked by:** 00 (Set up Vitest)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A single helper produces a month's start and end as local calendar date strings, with no UTC conversion
-- [ ] The dashboard's Total Spent / Left to Spend and the reports page both query through that helper
-- [ ] An expense dated on the last day of the previous month, or the first day of the next month, is not counted in the current month, whatever the browser's timezone
-- [ ] The helper has tests covering month boundaries in a positive-offset and a negative-offset timezone
+- [x] A single helper produces a month's start and end as local calendar date strings, with no UTC conversion
+- [x] The dashboard's Total Spent / Left to Spend and the reports page both query through that helper
+- [x] An expense dated on the last day of the previous month, or the first day of the next month, is not counted in the current month, whatever the browser's timezone
+- [x] The helper has tests covering month boundaries in a positive-offset and a negative-offset timezone
+
+## Comments
+
+- Helper is `monthRange(date)` in `src/lib/month-range.ts`, returning `{ start, end }` as local `yyyy-MM-dd` strings (`MonthRange`). Reports builds its multi-month window from `monthRange(sixMonthsAgo).start` and `monthRange(now).end`.
+- Tests pin `process.env.TZ` per `describe` to UTC+2 (`Africa/Johannesburg`) and UTC-6 (`America/Mexico_City`), both without DST, and assert the offset actually switched.
+- Not changed: the reports page's in-memory month filters (`startOfMonth`/`endOfMonth` vs `parseISO(e.date)`). Both sides are local, so they're already timezone-correct; ticket 09 owns that code and could switch it to `monthRange` + string comparison.
+- `npm run lint` still has the 2 earlier `no-explicit-any` errors in `reports-dashboard.tsx` (ticket 11).

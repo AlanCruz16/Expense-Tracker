@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { monthRange } from '@/lib/month-range'
 import {
     startOfMonth, endOfMonth, format, subMonths,
     eachDayOfInterval, eachMonthOfInterval, isSameMonth, parseISO
@@ -68,8 +69,8 @@ export function ReportsDashboard() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const start = startOfMonth(subMonths(new Date(), HISTORY_MONTHS - 1)).toISOString()
-        const end = endOfMonth(new Date()).toISOString()
+        const { start } = monthRange(subMonths(new Date(), HISTORY_MONTHS - 1))
+        const { end } = monthRange(new Date())
 
         const [expenseRes, profileRes] = await Promise.all([
             supabase

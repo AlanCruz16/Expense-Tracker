@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns'
+import { monthRange } from '@/lib/month-range'
+import { startOfMonth, format, eachDayOfInterval } from 'date-fns'
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Legend } from 'recharts'
@@ -32,8 +33,7 @@ export function DashboardOverview() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const start = startOfMonth(new Date()).toISOString()
-        const end = endOfMonth(new Date()).toISOString()
+        const { start, end } = monthRange(new Date())
 
         const [expenseRes, profileRes] = await Promise.all([
             supabase
