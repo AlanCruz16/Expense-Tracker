@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, CreditCard, Banknote } from 'lucide-react'
 import { Database } from '@/types/supabase'
+import { checkDeletable, isInUseError } from '@/lib/delete-guard'
 
 type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
 
@@ -70,15 +71,23 @@ export function PaymentMethodsManager() {
         setSubmitting(false)
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure? This will affect expenses using this method.')) return
+    const handleDelete = async (method: PaymentMethod) => {
+        const check = await checkDeletable(supabase, 'payment method', method.id, method.name)
+        if (!check.ok) {
+            toast.error(check.message)
+            return
+        }
+
+        if (!confirm(`Delete "${method.name}"? This can't be undone.`)) return
 
         const { error } = await supabase
             .from('payment_methods')
             .delete()
-            .eq('id', id)
+            .eq('id', method.id)
 
-        if (error) {
+        if (isInUseError(error)) {
+            toast.error(`Can't delete "${method.name}": it's now used by expenses.`)
+        } else if (error) {
             toast.error('Failed to delete payment method')
         } else {
             toast.success('Payment method deleted')
@@ -160,7 +169,7 @@ export function PaymentMethodsManager() {
                                         <div className="text-xs text-muted-foreground">{method.type}</div>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(method.id)}>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(method)} aria-label={`Delete ${method.name}`}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                             </div>

@@ -4,10 +4,10 @@
 
 **Blocked by:** 00 (Set up Vitest)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Trying to delete a category used by expenses or import rules shows a clear message saying it can't be deleted and how many expenses use it
-- [ ] The same applies to payment methods used by expenses
-- [ ] The confirm dialog wording no longer promises a delete that will be refused (or the check happens before the dialog)
-- [ ] Deleting an unused category or payment method still works
-- [ ] No expense data is changed or lost
+- [x] Trying to delete a category used by expenses or import rules shows a clear message saying it can't be deleted and how many expenses use it
+- [x] The same applies to payment methods used by expenses
+- [x] The confirm dialog wording no longer promises a delete that will be refused (or the check happens before the dialog)
+- [x] Deleting an unused category or payment method still works
+- [x] No expense data is changed or lost

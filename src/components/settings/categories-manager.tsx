@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, Utensils, Car, ShoppingBag, Film, ShoppingCart, Zap, Activity, Plane, HelpCircle } from 'lucide-react'
 import { Database } from '@/types/supabase'
+import { checkDeletable, isInUseError } from '@/lib/delete-guard'
 
 type Category = Database['public']['Tables']['categories']['Row']
 
@@ -85,15 +86,23 @@ export function CategoriesManager() {
         setSubmitting(false)
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure? This will affect expenses using this category.')) return
+    const handleDelete = async (category: Category) => {
+        const check = await checkDeletable(supabase, 'category', category.id, category.name)
+        if (!check.ok) {
+            toast.error(check.message)
+            return
+        }
+
+        if (!confirm(`Delete "${category.name}"? This can't be undone.`)) return
 
         const { error } = await supabase
             .from('categories')
             .delete()
-            .eq('id', id)
+            .eq('id', category.id)
 
-        if (error) {
+        if (isInUseError(error)) {
+            toast.error(`Can't delete "${category.name}": it's now used by expenses or import rules.`)
+        } else if (error) {
             toast.error('Failed to delete category')
         } else {
             toast.success('Category deleted')
@@ -200,7 +209,7 @@ export function CategoriesManager() {
                                         <span className="font-medium">{category.name}</span>
                                     </div>
                                     {!category.is_default && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(category.id)}>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(category)} aria-label={`Delete ${category.name}`}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                         </Button>
                                     )}
