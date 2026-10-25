@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { monthRange } from '@/lib/month-range'
+import { historyWindow, isMonthLoaded } from '@/lib/history-window'
 import {
     startOfMonth, endOfMonth, format, subMonths,
     eachDayOfInterval, eachMonthOfInterval, isSameMonth, parseISO
@@ -55,22 +55,23 @@ function CustomTooltip({ active, payload, label }: any) {
     )
 }
 
+// How many months of history to load
+const HISTORY_MONTHS = 6
+
 export function ReportsDashboard() {
     const [allExpenses, setAllExpenses] = useState<Expense[]>([])
     const [income, setIncome] = useState(0)
     const [loading, setLoading] = useState(true)
     const [selectedDate, setSelectedDate] = useState(new Date())
     const supabase = createClient()
-
-    // How many months of history to load
-    const HISTORY_MONTHS = 6
+    // The months whose expenses are fetched; navigation and comparisons stay inside it
+    const [loadedWindow] = useState(() => historyWindow(new Date(), HISTORY_MONTHS))
 
     const fetchData = async () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const { start } = monthRange(subMonths(new Date(), HISTORY_MONTHS - 1))
-        const { end } = monthRange(new Date())
+        const { start, end } = loadedWindow
 
         const [expenseRes, profileRes] = await Promise.all([
             supabase
@@ -130,6 +131,8 @@ export function ReportsDashboard() {
 
     const totalSelectedMonth = selectedMonthExpenses.reduce((s, e) => s + e.amount, 0)
     const totalPrevMonth = prevMonthExpenses.reduce((s, e) => s + e.amount, 0)
+    // Without the previous month's expenses loaded there is nothing to compare against
+    const hasPrevMonthData = isMonthLoaded(subMonths(selectedDate, 1), loadedWindow)
     const monthChange = totalPrevMonth > 0
         ? ((totalSelectedMonth - totalPrevMonth) / totalPrevMonth) * 100
         : 0
@@ -214,9 +217,10 @@ export function ReportsDashboard() {
 
     // ── Navigation ──
     const canGoForward = !isSameMonth(selectedDate, new Date())
+    const canGoBack = isMonthLoaded(subMonths(selectedDate, 1), loadedWindow)
     const navigateMonth = (dir: number) => {
         const next = dir > 0 ? subMonths(selectedDate, -1) : subMonths(selectedDate, 1)
-        if (next <= new Date()) setSelectedDate(next)
+        if (next <= new Date() && isMonthLoaded(next, loadedWindow)) setSelectedDate(next)
     }
 
     if (loading) {
@@ -236,6 +240,8 @@ export function ReportsDashboard() {
                         variant="ghost"
                         size="icon"
                         onClick={() => navigateMonth(-1)}
+                        disabled={!canGoBack}
+                        aria-label="Previous month"
                         className="h-9 w-9 rounded-full"
                     >
                         <ChevronLeft className="h-4 w-4" />
@@ -251,6 +257,7 @@ export function ReportsDashboard() {
                         size="icon"
                         onClick={() => navigateMonth(1)}
                         disabled={!canGoForward}
+                        aria-label="Next month"
                         className="h-9 w-9 rounded-full"
                     >
                         <ChevronRight className="h-4 w-4" />
@@ -292,19 +299,30 @@ export function ReportsDashboard() {
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                             vs Last Month
                         </CardTitle>
-                        {monthChange >= 0 ? (
+                        {!hasPrevMonthData ? null : monthChange >= 0 ? (
                             <ArrowUpRight className="h-4 w-4 text-red-500" />
                         ) : (
                             <ArrowDownRight className="h-4 w-4 text-emerald-500" />
                         )}
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${monthChange >= 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                            {monthChange >= 0 ? '+' : ''}{monthChange.toFixed(1)}%
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            ${Math.abs(totalSelectedMonth - totalPrevMonth).toFixed(2)} {monthChange >= 0 ? 'more' : 'less'}
-                        </p>
+                        {hasPrevMonthData ? (
+                            <>
+                                <div className={`text-2xl font-bold ${monthChange >= 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                    {monthChange >= 0 ? '+' : ''}{monthChange.toFixed(1)}%
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    ${Math.abs(totalSelectedMonth - totalPrevMonth).toFixed(2)} {monthChange >= 0 ? 'more' : 'less'}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-2xl font-bold text-muted-foreground">No data</div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {format(subMonths(selectedDate, 1), 'MMMM')} isn&apos;t loaded
+                                </p>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -473,7 +491,9 @@ export function ReportsDashboard() {
                     <CardHeader>
                         <CardTitle className="text-base">Category Trends</CardTitle>
                         <p className="text-xs text-muted-foreground">
-                            {format(selectedDate, 'MMM')} vs {format(subMonths(selectedDate, 1), 'MMM')}
+                            {hasPrevMonthData
+                                ? `${format(selectedDate, 'MMM')} vs ${format(subMonths(selectedDate, 1), 'MMM')}`
+                                : format(selectedDate, 'MMM')}
                         </p>
                     </CardHeader>
                     <CardContent className="pl-0 pr-2">
@@ -511,13 +531,15 @@ export function ReportsDashboard() {
                                         radius={[0, 4, 4, 0]}
                                         barSize={10}
                                     />
-                                    <Bar
-                                        dataKey="previous"
-                                        name={format(subMonths(selectedDate, 1), 'MMM')}
-                                        fill={MONTH_COMPARISON_COLORS[1]}
-                                        radius={[0, 4, 4, 0]}
-                                        barSize={10}
-                                    />
+                                    {hasPrevMonthData && (
+                                        <Bar
+                                            dataKey="previous"
+                                            name={format(subMonths(selectedDate, 1), 'MMM')}
+                                            fill={MONTH_COMPARISON_COLORS[1]}
+                                            radius={[0, 4, 4, 0]}
+                                            barSize={10}
+                                        />
+                                    )}
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
