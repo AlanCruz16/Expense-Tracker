@@ -2,7 +2,7 @@
 
 **What to build:** The reports page only fetches the last six months of expenses, but month navigation goes back without limit. Older months show $0 and "No expenses for this month" even when expenses exist. On the oldest loaded month, "vs Last Month" compares against an unloaded month, which counts as 0. Navigation and comparisons should only cover data that has actually been loaded.
 
-**Blocked by:** 01 (Prefactor: one shared month-range helper)
+**Blocked by:** 00 (Set up Vitest), 01 (Prefactor: one shared month-range helper)
 
 **Status:** ready-for-agent
 

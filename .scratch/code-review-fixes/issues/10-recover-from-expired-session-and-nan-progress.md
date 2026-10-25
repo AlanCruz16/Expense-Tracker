@@ -2,7 +2,7 @@
 
 **What to build:** Several save handlers (add expense, income, categories, payment methods) return early when there's no signed-in user without resetting their loading state. If the session expires in an open tab, the user sees "You must be logged in" but the button stays spinning and disabled. Separately, the dashboard's spending progress bar divides by monthly income, so with income 0 and no expenses it renders `width: NaN%`.
 
-**Blocked by:** None (can start immediately)
+**Blocked by:** 00 (Set up Vitest)
 
 **Status:** ready-for-agent
 

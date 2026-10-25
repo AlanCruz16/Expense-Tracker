@@ -2,7 +2,7 @@
 
 **What to build:** The receipt-analysis API endpoint accepts requests from anyone, and each one is a billed Gemini vision call. Only signed-in users should be able to use it, and oversized images should be refused before the model is called. Smart Import keeps working as before for a signed-in user.
 
-**Blocked by:** None (can start immediately)
+**Blocked by:** 00 (Set up Vitest)
 
 **Status:** ready-for-agent
 

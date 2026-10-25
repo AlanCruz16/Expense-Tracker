@@ -2,7 +2,7 @@
 
 **What to build:** In the import review table, clearing an amount stores `NaN`. That serializes to `null` and makes the whole batch insert fail with a generic error. Amounts the AI extracts as negatives (debits like `-45.00`) are inserted as-is and reduce the user's totals. The review step should catch bad amounts before the user imports.
 
-**Blocked by:** None (can start immediately)
+**Blocked by:** 00 (Set up Vitest)
 
 **Status:** ready-for-agent
 

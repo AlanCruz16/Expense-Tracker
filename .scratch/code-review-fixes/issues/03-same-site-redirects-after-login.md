@@ -2,7 +2,7 @@
 
 **What to build:** The auth callback copies the `next` query parameter into the redirect URL without checking it. A link like `?next=@evil.com` therefore sends a freshly signed-in user to another site. The callback also trusts the `x-forwarded-host` header for the redirect host. After login or password recovery, users should only ever be sent to a path inside this app.
 
-**Blocked by:** None (can start immediately)
+**Blocked by:** 00 (Set up Vitest)
 
 **Status:** ready-for-agent
 

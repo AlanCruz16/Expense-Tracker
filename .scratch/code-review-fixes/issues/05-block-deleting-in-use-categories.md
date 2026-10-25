@@ -2,7 +2,7 @@
 
 **What to build:** Deleting a category or payment method that any expense (or import rule) uses always fails at the database with a foreign-key violation, and the user sees only a generic "Failed to delete" toast, even though the confirm dialog implies the delete will go through. Decision: **block the delete and explain why** (keep the restrictive FK; don't null out or reassign data). Deleting an unused one keeps working.
 
-**Blocked by:** None (can start immediately)
+**Blocked by:** 00 (Set up Vitest)
 
 **Status:** ready-for-agent
 

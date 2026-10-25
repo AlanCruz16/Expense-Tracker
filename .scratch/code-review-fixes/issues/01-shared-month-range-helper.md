@@ -2,7 +2,7 @@
 
 **What to build:** The dashboard and the reports page both work out "this month's expenses" by building local start/end-of-month timestamps and converting them to UTC before comparing against the expense `date` column. Outside UTC the range shifts by a day: in UTC+2, September 30 expenses count toward October; in UTC-6, November 1 expenses do. Move this into one shared helper that returns the month's first and last day as local calendar dates (`yyyy-MM-dd`), and switch both screens to use it. A user in any timezone then sees month totals that contain exactly that month's expenses.
 
-**Blocked by:** None (can start immediately)
+**Blocked by:** 00 (Set up Vitest)
 
 **Status:** ready-for-agent
 

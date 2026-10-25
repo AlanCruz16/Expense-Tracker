@@ -2,7 +2,7 @@
 
 **What to build:** Sign Out and Smart Import only appear in the desktop sidebar, which is hidden below the `md` breakpoint. On a phone or in the installed PWA, a user can't log out (a real risk on shared devices) and can't reach `/import`. Make both reachable from the mobile navigation.
 
-**Blocked by:** None (can start immediately)
+**Blocked by:** 00 (Set up Vitest)
 
 **Status:** ready-for-agent
 
