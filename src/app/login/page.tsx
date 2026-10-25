@@ -37,6 +37,25 @@ export default function AuthPage() {
     }
   }
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error('Enter your email first')
+      return
+    }
+    setLoading(true)
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${location.origin}/auth/callback?next=/reset-password`,
+    })
+
+    if (error) {
+      toast.error(error.message)
+    } else {
+      toast.success('Check your email for a password reset link')
+    }
+    setLoading(false)
+  }
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -88,7 +107,17 @@ export default function AuthPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Password</Label>
+                    <button
+                      type="button"
+                      className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                      onClick={handleForgotPassword}
+                      disabled={loading}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                   <Input
                     id="password"
                     type="password"
