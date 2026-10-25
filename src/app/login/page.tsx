@@ -32,8 +32,8 @@ export default function AuthPage() {
       setLoading(false)
     } else {
       toast.success('Logged in successfully')
-      router.push('/dashboard')
-      router.refresh()
+      // A separate router.refresh() here re-renders /login and can cancel the push
+      router.replace('/dashboard')
     }
   }
 
