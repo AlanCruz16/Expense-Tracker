@@ -4,9 +4,9 @@
 
 **Blocked by:** 00 (Set up Vitest)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Rows with an empty, zero, or non-numeric amount are visibly flagged in the review table
-- [ ] The import button is disabled (or the import refuses with a clear message) while any selected row has an invalid amount
-- [ ] Negative amounts from AI extraction are turned into positive values when shown for review
-- [ ] Once all amounts are valid, the batch inserts successfully
+- [x] Rows with an empty, zero, or non-numeric amount are visibly flagged in the review table
+- [x] The import button is disabled (or the import refuses with a clear message) while any selected row has an invalid amount
+- [x] Negative amounts from AI extraction are turned into positive values when shown for review
+- [x] Once all amounts are valid, the batch inserts successfully

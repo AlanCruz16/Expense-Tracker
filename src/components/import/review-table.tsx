@@ -20,10 +20,24 @@ type ImportRule = Database['public']['Tables']['import_rules']['Row']
 interface ExtractedExpense {
     date: string
     description: string
-    amount: number
+    // Kept as the raw input text so a cleared field stays empty instead of becoming NaN
+    amount: string
     category_id?: string
     payment_method_id?: string
     selected: boolean
+}
+
+// An importable amount is a finite number greater than zero
+function parseAmount(raw: string): number | null {
+    if (raw.trim() === '') return null
+    const value = Number(raw)
+    return Number.isFinite(value) && value > 0 ? value : null
+}
+
+// Debits often come back negative; every imported expense is a positive amount
+function toReviewAmount(extracted: unknown): string {
+    const value = Number(extracted)
+    return Number.isFinite(value) ? String(Math.abs(value)) : ''
 }
 
 interface ReviewTableProps {
@@ -63,6 +77,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
 
                 return {
                     ...item,
+                    amount: toReviewAmount(item.amount),
                     category_id: rule ? rule.category_id : '',
                     payment_method_id: methodRes.data?.[0]?.id || '', // Default to first method
                     selected: true
@@ -111,12 +126,20 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
             return
         }
 
+        // Validate amounts
+        const invalidAmounts = selectedExpenses.some(e => parseAmount(e.amount) === null)
+        if (invalidAmounts) {
+            toast.error('Please enter an amount greater than 0 for all expenses')
+            setImporting(false)
+            return
+        }
+
         // 1. Save Expenses
         const { error } = await supabase.from('expenses').insert(
             selectedExpenses.map(e => ({
                 user_id: user.id,
                 date: e.date,
-                amount: e.amount,
+                amount: parseAmount(e.amount),
                 comment: e.description,
                 category_id: e.category_id || null, // Ensure null if empty string (though validation prevents this)
                 payment_method_id: e.payment_method_id || null
@@ -144,6 +167,9 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         setExpenses(newExpenses)
     }
 
+    const selectedCount = expenses.filter(e => e.selected).length
+    const hasInvalidAmount = expenses.some(e => e.selected && parseAmount(e.amount) === null)
+
     if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>
 
     return (
@@ -152,9 +178,9 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                 <h3 className="text-lg font-medium">Review & Import</h3>
                 <div className="space-x-2">
                     <Button variant="outline" onClick={onCancel} disabled={importing}>Cancel</Button>
-                    <Button onClick={handleImport} disabled={importing}>
+                    <Button onClick={handleImport} disabled={importing || hasInvalidAmount}>
                         {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Import {expenses.filter(e => e.selected).length} Expenses
+                        Import {selectedCount} Expenses
                     </Button>
                 </div>
             </div>
@@ -179,7 +205,9 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {expenses.map((expense, index) => (
+                        {expenses.map((expense, index) => {
+                            const amountInvalid = parseAmount(expense.amount) === null
+                            return (
                             <TableRow key={index} className={!expense.selected ? 'opacity-50' : ''}>
                                 <TableCell>
                                     <Checkbox
@@ -205,9 +233,13 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                                     <Input
                                         type="number"
                                         value={expense.amount}
-                                        onInput={(e) => updateExpense(index, 'amount', parseFloat((e.target as HTMLInputElement).value))}
+                                        onChange={(e) => updateExpense(index, 'amount', e.target.value)}
+                                        aria-invalid={amountInvalid}
                                         className="w-[100px]"
                                     />
+                                    {amountInvalid && (
+                                        <p className="mt-1 text-xs text-destructive">Enter an amount greater than 0</p>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Select
@@ -240,7 +272,8 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                                     </Select>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                            )
+                        })}
                     </TableBody>
                 </Table>
             </div>
