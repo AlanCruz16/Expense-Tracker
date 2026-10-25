@@ -5,14 +5,42 @@ import {
     LayoutDashboard,
     PlusCircle,
     CreditCard,
+    PieChart,
+    Menu,
+    Upload,
     Settings,
-    PieChart
+    LogOut
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePathname } from 'next/navigation'
+import {
+    Sheet,
+    SheetClose,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger
+} from '@/components/ui/sheet'
+
+// Pages that don't fit in the bottom bar live in the "More" sheet
+const moreItems = [
+    {
+        href: '/import',
+        icon: Upload,
+        label: 'Smart Import'
+    },
+    {
+        href: '/settings',
+        icon: Settings,
+        label: 'Settings'
+    }
+]
+
+const sheetRowClass = "flex items-center gap-3 h-12 px-3 rounded-lg text-sm font-medium transition-colors"
 
 export function MobileNav() {
     const pathname = usePathname()
+    const isMoreActive = moreItems.some((item) => pathname === item.href)
 
     // Using a curated list of most important actions for mobile
     const navItems = [
@@ -36,11 +64,6 @@ export function MobileNav() {
             href: '/reports',
             icon: PieChart,
             label: 'Reports'
-        },
-        {
-            href: '/settings',
-            icon: Settings,
-            label: 'Settings'
         }
     ]
 
@@ -69,6 +92,44 @@ export function MobileNav() {
                         </Link>
                     )
                 })}
+                <Sheet>
+                    <SheetTrigger className={cn(
+                        "flex flex-col items-center justify-center w-full h-full transition-colors duration-200",
+                        isMoreActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    )}>
+                        <div className="flex flex-col items-center justify-center p-1 rounded-xl transition-all">
+                            <Menu className="h-6 w-6" />
+                            <span className="text-[10px] font-medium mt-1">More</span>
+                        </div>
+                    </SheetTrigger>
+                    <SheetContent side="bottom" aria-describedby={undefined} className="rounded-t-2xl pb-safe">
+                        <SheetHeader>
+                            <SheetTitle>More</SheetTitle>
+                        </SheetHeader>
+                        <div className="flex flex-col gap-1 px-4 pb-4">
+                            {moreItems.map((item) => (
+                                <SheetClose asChild key={item.href}>
+                                    <Link
+                                        href={item.href}
+                                        className={cn(
+                                            sheetRowClass,
+                                            pathname === item.href ? "bg-accent text-primary" : "hover:bg-accent"
+                                        )}
+                                    >
+                                        <item.icon className="h-5 w-5" />
+                                        {item.label}
+                                    </Link>
+                                </SheetClose>
+                            ))}
+                            <form action="/auth/signout" method="post" className="mt-2 border-t pt-2">
+                                <button type="submit" className={cn(sheetRowClass, "w-full text-muted-foreground hover:bg-accent")}>
+                                    <LogOut className="h-5 w-5" />
+                                    Sign Out
+                                </button>
+                            </form>
+                        </div>
+                    </SheetContent>
+                </Sheet>
             </nav>
         </div>
     )

@@ -4,9 +4,9 @@
 
 **Blocked by:** 00 (Set up Vitest)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] On a phone-width viewport, a user can reach Smart Import from the navigation
-- [ ] On a phone-width viewport, a user can sign out and ends up on the login page with the session cleared
-- [ ] The mobile nav stays usable at small widths (no overflow or cramped tap targets)
-- [ ] Desktop navigation is unchanged
+- [x] On a phone-width viewport, a user can reach Smart Import from the navigation
+- [x] On a phone-width viewport, a user can sign out and ends up on the login page with the session cleared
+- [x] The mobile nav stays usable at small widths (no overflow or cramped tap targets)
+- [x] Desktop navigation is unchanged
