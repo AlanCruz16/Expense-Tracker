@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ReportsDashboard } from "@/components/reports/reports-dashboard"
@@ -33,10 +33,24 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }))
 
-// Charts need real layout to render; they aren't what these tests check
+// Charts need real layout to render. Bar charts are replaced by a plain list of
+// their x-axis labels so tests can see which months a chart covers; the other
+// charts aren't what these tests check.
 vi.mock("recharts", async (importOriginal) => {
   const actual = await importOriginal<typeof import("recharts")>()
-  return { ...actual, ResponsiveContainer: () => null }
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    AreaChart: () => null,
+    PieChart: () => null,
+    BarChart: ({ data }: { data: { month?: string; name?: string }[] }) => (
+      <ol>
+        {data.map((d) => (
+          <li key={d.month ?? d.name}>{d.month ?? d.name}</li>
+        ))}
+      </ol>
+    ),
+  }
 })
 
 function expense(id: string, date: string, amount: number, category = "Food"): FakeExpense {
@@ -118,5 +132,43 @@ describe("ReportsDashboard history window", () => {
     expect(card("Total Spent")).toHaveTextContent("2 transactions")
     expect(card("vs Last Month")).toHaveTextContent("+50.0%")
     expect(card("vs Last Month")).toHaveTextContent("$50.00 more")
+  })
+
+  describe("when the tab stays open into the next month", () => {
+    async function renderThenCrossIntoNovember() {
+      await renderReports()
+      vi.setSystemTime(new Date(2026, 10, 2, 9))
+    }
+
+    function comparisonMonths() {
+      return within(card("Monthly Comparison")).getAllByRole("listitem").map((li) => li.textContent)
+    }
+
+    it("keeps the next-month control disabled on the newest loaded month", async () => {
+      await renderThenCrossIntoNovember()
+
+      await goBack(1)
+      await userEvent.click(screen.getByRole("button", { name: "Next month" }))
+
+      expect(shownMonth()).toBe("October 2026")
+      expect(screen.getByRole("button", { name: "Next month" })).toBeDisabled()
+    })
+
+    it("jumps back to the newest loaded month from the current-month shortcut", async () => {
+      await renderThenCrossIntoNovember()
+
+      await goBack(2)
+      await userEvent.click(screen.getByRole("button", { name: "Current Month" }))
+
+      expect(shownMonth()).toBe("October 2026")
+    })
+
+    it("keeps the monthly comparison chart on the loaded months", async () => {
+      await renderThenCrossIntoNovember()
+
+      await goBack(1)
+
+      expect(comparisonMonths()).toEqual(["May 26", "Jun 26", "Jul 26", "Aug 26", "Sep 26", "Oct 26"])
+    })
   })
 })

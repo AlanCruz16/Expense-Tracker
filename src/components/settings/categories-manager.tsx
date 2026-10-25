@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, Utensils, Car, ShoppingBag, Film, ShoppingCart, Zap, Activity, Plane, HelpCircle } from 'lucide-react'
 import { Database } from '@/types/supabase'
-import { checkDeletable, isInUseError } from '@/lib/delete-guard'
+import { deleteIfUnused } from '@/lib/delete-guard'
 
 type Category = Database['public']['Tables']['categories']['Row']
 
@@ -87,27 +87,7 @@ export function CategoriesManager() {
     }
 
     const handleDelete = async (category: Category) => {
-        const check = await checkDeletable(supabase, 'category', category.id, category.name)
-        if (!check.ok) {
-            toast.error(check.message)
-            return
-        }
-
-        if (!confirm(`Delete "${category.name}"? This can't be undone.`)) return
-
-        const { error } = await supabase
-            .from('categories')
-            .delete()
-            .eq('id', category.id)
-
-        if (isInUseError(error)) {
-            toast.error(`Can't delete "${category.name}": it's now used by expenses or import rules.`)
-        } else if (error) {
-            toast.error('Failed to delete category')
-        } else {
-            toast.success('Category deleted')
-            fetchCategories()
-        }
+        if (await deleteIfUnused(supabase, 'category', category)) fetchCategories()
     }
 
     return (

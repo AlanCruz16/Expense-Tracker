@@ -88,6 +88,19 @@ describe("ReviewTable amounts", () => {
     expect(importButton()).toBeDisabled()
   })
 
+  it("leaves missing or blank extracted amounts empty and flags them", async () => {
+    const [, missing, blank] = await renderTable([
+      { date: "2026-10-01", description: "Coffee shop", amount: null },
+      { date: "2026-10-02", description: "Coffee beans", amount: "" },
+    ])
+
+    expect(amountInput(missing).value).toBe("")
+    expect(amountInput(blank).value).toBe("")
+    expect(amountInput(missing)).toHaveAttribute("aria-invalid", "true")
+    expect(amountInput(blank)).toHaveAttribute("aria-invalid", "true")
+    expect(importButton()).toBeDisabled()
+  })
+
   it("lets the user import once an invalid row is deselected", async () => {
     const [, first] = await renderTable()
 

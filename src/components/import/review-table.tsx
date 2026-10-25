@@ -34,8 +34,10 @@ function parseAmount(raw: string): number | null {
     return Number.isFinite(value) && value > 0 ? value : null
 }
 
-// Debits often come back negative; every imported expense is a positive amount
+// Debits often come back negative; every imported expense is a positive amount.
+// A missing or blank amount stays empty (Number would read it as 0).
 function toReviewAmount(extracted: unknown): string {
+    if (extracted == null || String(extracted).trim() === '') return ''
     const value = Number(extracted)
     return Number.isFinite(value) ? String(Math.abs(value)) : ''
 }
@@ -90,6 +92,11 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         fetchData()
     }, [initialData])
 
+    // Each row's amount is parsed once; null marks a row that can't be imported
+    const parsedAmounts = expenses.map(e => parseAmount(e.amount))
+    const selectedRows = expenses.flatMap((e, i) => e.selected ? [{ ...e, amount: parsedAmounts[i] }] : [])
+    const hasInvalidAmount = selectedRows.some(row => row.amount === null)
+
     const handleImport = async () => {
         console.log('Starting import...')
         setImporting(true)
@@ -102,16 +109,14 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
             return
         }
 
-        const selectedExpenses = expenses.filter(e => e.selected)
-
-        if (selectedExpenses.length === 0) {
+        if (selectedRows.length === 0) {
             toast.error('No expenses selected')
             setImporting(false)
             return
         }
 
         // Validate categories
-        const missingCategories = selectedExpenses.some(e => !e.category_id)
+        const missingCategories = selectedRows.some(e => !e.category_id)
         if (missingCategories) {
             toast.error('Please select a category for all expenses')
             setImporting(false)
@@ -119,7 +124,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         }
 
         // Validate payment methods
-        const missingMethods = selectedExpenses.some(e => !e.payment_method_id)
+        const missingMethods = selectedRows.some(e => !e.payment_method_id)
         if (missingMethods) {
             toast.error('Please select a payment method for all expenses')
             setImporting(false)
@@ -127,8 +132,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         }
 
         // Validate amounts
-        const invalidAmounts = selectedExpenses.some(e => parseAmount(e.amount) === null)
-        if (invalidAmounts) {
+        if (hasInvalidAmount) {
             toast.error('Please enter an amount greater than 0 for all expenses')
             setImporting(false)
             return
@@ -136,10 +140,10 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
 
         // 1. Save Expenses
         const { error } = await supabase.from('expenses').insert(
-            selectedExpenses.map(e => ({
+            selectedRows.map(e => ({
                 user_id: user.id,
                 date: e.date,
-                amount: parseAmount(e.amount),
+                amount: e.amount,
                 comment: e.description,
                 category_id: e.category_id || null, // Ensure null if empty string (though validation prevents this)
                 payment_method_id: e.payment_method_id || null
@@ -156,7 +160,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         // We could ask user if they want to save new rules here.
         // For now, let's just import.
 
-        toast.success(`Imported ${selectedExpenses.length} expenses`)
+        toast.success(`Imported ${selectedRows.length} expenses`)
         router.push('/expenses')
         router.refresh()
     }
@@ -167,8 +171,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         setExpenses(newExpenses)
     }
 
-    const selectedCount = expenses.filter(e => e.selected).length
-    const hasInvalidAmount = expenses.some(e => e.selected && parseAmount(e.amount) === null)
+    const selectedCount = selectedRows.length
 
     if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>
 
@@ -206,7 +209,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                     </TableHeader>
                     <TableBody>
                         {expenses.map((expense, index) => {
-                            const amountInvalid = parseAmount(expense.amount) === null
+                            const amountInvalid = parsedAmounts[index] === null
                             return (
                             <TableRow key={index} className={!expense.selected ? 'opacity-50' : ''}>
                                 <TableCell>

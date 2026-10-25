@@ -72,6 +72,36 @@ describe("ImportZone", () => {
     await expectIdle(container)
   })
 
+  it("falls back to a generic message when the host answers with an HTML error page", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    fetchMock.mockResolvedValue(
+      new Response("<html><head><title>413 Request Entity Too Large</title></head><body>nginx</body></html>", {
+        status: 413,
+        headers: { "Content-Type": "text/html" },
+      }),
+    )
+
+    const { container } = await uploadReceipt()
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to analyze statement"))
+    await expectIdle(container)
+  })
+
+  it("falls back to a generic message when the plain-text body isn't a short message", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    fetchMock.mockResolvedValue(
+      new Response(
+        "An error occurred with your deployment\n\nFUNCTION_INVOCATION_TIMEOUT\n\niad1::abcde-1761400000000-0123456789ab",
+        { status: 504 },
+      ),
+    )
+
+    const { container } = await uploadReceipt()
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Failed to analyze statement"))
+    await expectIdle(container)
+  })
+
   it("shows an error and returns to idle when the network drops", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {})
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))

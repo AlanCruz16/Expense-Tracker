@@ -6,7 +6,19 @@ import { toast } from 'sonner'
 import { Loader2, UploadCloud } from 'lucide-react'
 import { ReviewTable } from '@/components/import/review-table'
 
-const FALLBACK_ERROR = 'Failed to analyze statement'
+const GENERIC_ANALYSIS_ERROR = 'Failed to analyze statement'
+const MAX_ERROR_MESSAGE_LENGTH = 120
+
+// The analyze route answers failures with a short plain-text reason. Anything
+// else (an HTML error page or a multi-line dump from the host) isn't fit for a
+// toast, so the generic message is shown instead.
+async function analysisErrorMessage(response: Response): Promise<string> {
+    const contentType = response.headers.get('content-type') ?? ''
+    if (!contentType.startsWith('text/plain')) return GENERIC_ANALYSIS_ERROR
+    const message = (await response.text().catch(() => '')).trim()
+    const isShortMessage = message !== '' && message.length <= MAX_ERROR_MESSAGE_LENGTH && !message.includes('\n')
+    return isShortMessage ? message : GENERIC_ANALYSIS_ERROR
+}
 
 function readAsDataURL(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -42,9 +54,7 @@ export function ImportZone() {
             })
 
             if (!response.ok) {
-                // The route answers failures with a plain-text reason
-                const message = (await response.text().catch(() => '')).trim()
-                toast.error(message || FALLBACK_ERROR)
+                toast.error(await analysisErrorMessage(response))
                 return
             }
 
@@ -52,7 +62,7 @@ export function ImportZone() {
             setData(result.expenses)
         } catch (error) {
             console.error(error)
-            toast.error(FALLBACK_ERROR)
+            toast.error(GENERIC_ANALYSIS_ERROR)
         } finally {
             setAnalyzing(false)
             // Clear the input so picking the same file again still fires onChange
