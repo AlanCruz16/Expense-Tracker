@@ -13,10 +13,7 @@ const expenseQuery = vi.fn()
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: { id: "user-1" } } }) },
-    from: (table: string) => {
-      if (table === "profiles") {
-        return { select: () => ({ eq: () => ({ single: async () => ({ data: { monthly_income: 0 } }) }) }) }
-      }
+    from: () => {
       return {
         select: () => ({
           gte: (_col: string, start: string) => ({

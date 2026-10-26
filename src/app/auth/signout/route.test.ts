@@ -20,7 +20,7 @@ describe("POST /auth/signout", () => {
   })
 
   it("clears the session and sends the user to the login page", async () => {
-    await expect(POST(new Request("http://localhost/auth/signout", { method: "POST" }))).rejects.toThrow(
+    await expect(POST()).rejects.toThrow(
       "NEXT_REDIRECT /login"
     )
 

@@ -11,13 +11,13 @@ import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Database } from '@/types/supabase'
-import { Wallet, Tag, FileText, Calendar as CalendarIcon, Loader2, Check, DollarSign } from 'lucide-react'
+import { Wallet, Tag, FileText, Calendar as CalendarIcon, Loader2, Check } from 'lucide-react'
 
 
 // I need to install Textarea, but I'll use Input for now or add it later.
@@ -161,7 +161,7 @@ export function AddExpenseForm() {
                                             className="w-48 text-7xl font-bold border-none shadow-none text-left p-0 h-24 bg-transparent focus-visible:ring-0 placeholder:text-muted-foreground/20 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             placeholder="0"
                                             {...field}
-                                            onFocus={(e) => {
+                                            onFocus={() => {
                                                 if (field.value === 0) {
                                                     field.onChange('')
                                                 }

@@ -8,14 +8,14 @@ import {
     eachDayOfInterval, eachMonthOfInterval, isSameMonth, parseISO
 } from 'date-fns'
 import {
-    Loader2, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight,
+    Loader2, TrendingUp, ArrowUpRight, ArrowDownRight,
     CalendarDays, ChevronLeft, ChevronRight, BarChart3
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
-    LineChart, Line, PieChart, Pie, Cell, CartesianGrid, Area, AreaChart
+    PieChart, Pie, Cell, CartesianGrid, Area, AreaChart
 } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import { Database } from '@/types/supabase'
@@ -64,7 +64,6 @@ const HISTORY_MONTHS = 6
 
 export function ReportsDashboard() {
     const [allExpenses, setAllExpenses] = useState<Expense[]>([])
-    const [income, setIncome] = useState(0)
     const [loading, setLoading] = useState(true)
     const [selectedDate, setSelectedDate] = useState(new Date())
     const supabase = createClient()
@@ -78,22 +77,14 @@ export function ReportsDashboard() {
 
         const { start, end } = loadedWindow
 
-        const [expenseRes, profileRes] = await Promise.all([
-            supabase
-                .from('expenses')
-                .select('*, categories(*)')
-                .gte('date', start)
-                .lte('date', end)
-                .order('date', { ascending: false }),
-            supabase
-                .from('profiles')
-                .select('monthly_income')
-                .eq('id', user.id)
-                .single()
-        ])
+        const expenseRes = await supabase
+            .from('expenses')
+            .select('*, categories(*)')
+            .gte('date', start)
+            .lte('date', end)
+            .order('date', { ascending: false })
 
         if (expenseRes.data) setAllExpenses(expenseRes.data as Expense[])
-        if (profileRes.data) setIncome(profileRes.data.monthly_income || 0)
 
         setLoading(false)
     }
