@@ -4,10 +4,16 @@
 
 **Blocked by:** 00 (Set up Vitest)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `npm run lint` exits 0 (warnings may remain; ticket 12 removes the unused-code ones)
-- [ ] The reports chart tooltip uses Recharts' tooltip types, with no `any` and no lint-disable comments
-- [ ] A component test covers the tooltip: inactive or empty payload renders nothing; active renders the label and each series name with its value as dollars to two decimals
-- [ ] Hovering the reports charts shows the same tooltip as before
-- [ ] `npm test` and `npm run build` pass
+- [x] `npm run lint` exits 0 (warnings may remain; ticket 12 removes the unused-code ones)
+- [x] The reports chart tooltip uses Recharts' tooltip types, with no `any` and no lint-disable comments
+- [x] A component test covers the tooltip: inactive or empty payload renders nothing; active renders the label and each series name with its value as dollars to two decimals
+- [x] Hovering the reports charts shows the same tooltip as before
+- [x] `npm test` and `npm run build` pass
+
+## Comments
+
+- Renamed `CustomTooltip` to exported `ChartTooltip` in `reports-dashboard.tsx`, typed with `Partial<Pick<TooltipContentProps<number, string>, 'active' | 'payload' | 'label'>>` from Recharts. Markup unchanged, so hover output is identical.
+- New `src/components/reports/chart-tooltip.test.tsx` covers inactive, empty payload, and label + `$x.xx` per series.
+- `npm run lint`: 0 errors, 22 warnings (ticket 12). Build needs Supabase env vars; worktree built with placeholder `NEXT_PUBLIC_SUPABASE_*` values.

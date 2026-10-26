@@ -17,6 +17,7 @@ import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
     LineChart, Line, PieChart, Pie, Cell, CartesianGrid, Area, AreaChart
 } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { Database } from '@/types/supabase'
 
 type Expense = Database['public']['Tables']['expenses']['Row'] & {
@@ -38,13 +39,16 @@ const MONTH_COMPARISON_COLORS = [
     'oklch(0.75 0.10 145)',   // Previous month (muted)
 ]
 
+// Recharts injects these when the tooltip is used as `content`
+type ChartTooltipProps = Partial<Pick<TooltipContentProps<number, string>, 'active' | 'payload' | 'label'>>
+
 // Custom tooltip for recharts
-function CustomTooltip({ active, payload, label }: any) {
+export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
     if (!active || !payload?.length) return null
     return (
         <div className="rounded-xl border border-border/50 bg-background/90 backdrop-blur-xl p-3 shadow-lg">
             <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-            {payload.map((entry: any, i: number) => (
+            {payload.map((entry, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
                     <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
                     <span className="text-muted-foreground">{entry.name}:</span>
@@ -378,7 +382,7 @@ export function ReportsDashboard() {
                                     tickFormatter={(v) => `$${v}`}
                                     width={50}
                                 />
-                                <Tooltip content={<CustomTooltip />} />
+                                <Tooltip content={<ChartTooltip />} />
                                 <Area
                                     type="monotone"
                                     dataKey="cumulative"
@@ -427,7 +431,7 @@ export function ReportsDashboard() {
                                     tickFormatter={(v) => `$${v}`}
                                     width={55}
                                 />
-                                <Tooltip content={<CustomTooltip />} />
+                                <Tooltip content={<ChartTooltip />} />
                                 <Bar
                                     dataKey="total"
                                     name="Total"
@@ -473,7 +477,7 @@ export function ReportsDashboard() {
                                             <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
                                         ))}
                                     </Pie>
-                                    <Tooltip content={<CustomTooltip />} />
+                                    <Tooltip content={<ChartTooltip />} />
                                     <Legend
                                         verticalAlign="bottom"
                                         height={36}
@@ -523,7 +527,7 @@ export function ReportsDashboard() {
                                         axisLine={false}
                                         width={80}
                                     />
-                                    <Tooltip content={<CustomTooltip />} />
+                                    <Tooltip content={<ChartTooltip />} />
                                     <Legend wrapperStyle={{ fontSize: '11px' }} />
                                     <Bar
                                         dataKey="current"
