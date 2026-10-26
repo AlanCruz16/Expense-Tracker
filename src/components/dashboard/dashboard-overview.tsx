@@ -28,37 +28,36 @@ export function DashboardOverview() {
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [income, setIncome] = useState(0)
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
-
-    const fetchData = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { start, end } = monthRange(new Date())
-
-        const [expenseRes, profileRes] = await Promise.all([
-            supabase
-                .from('expenses')
-                .select('*, categories(*)')
-                .gte('date', start)
-                .lte('date', end),
-            supabase
-                .from('profiles')
-                .select('monthly_income')
-                .eq('id', user.id)
-                .single()
-        ])
-
-        if (expenseRes.data) setExpenses(expenseRes.data as Expense[])
-        if (profileRes.data) setIncome(profileRes.data.monthly_income || 0)
-
-        setLoading(false)
-    }
+    // Created once so it can be an effect dependency without refetching every render
+    const [supabase] = useState(createClient)
 
     useEffect(() => {
-        // eslint-disable-next-line
+        const fetchData = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const { start, end } = monthRange(new Date())
+
+            const [expenseRes, profileRes] = await Promise.all([
+                supabase
+                    .from('expenses')
+                    .select('*, categories(*)')
+                    .gte('date', start)
+                    .lte('date', end),
+                supabase
+                    .from('profiles')
+                    .select('monthly_income')
+                    .eq('id', user.id)
+                    .single()
+            ])
+
+            if (expenseRes.data) setExpenses(expenseRes.data as Expense[])
+            if (profileRes.data) setIncome(profileRes.data.monthly_income || 0)
+
+            setLoading(false)
+        }
         fetchData()
-    }, [])
+    }, [supabase])
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>
 

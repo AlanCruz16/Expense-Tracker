@@ -6,6 +6,7 @@ const insert = vi.fn()
 const getUser = vi.fn()
 const push = vi.fn()
 const toastError = vi.fn()
+const selects: string[] = []
 
 const tables: Record<string, unknown[]> = {
   categories: [{ id: "cat-1", name: "Food" }],
@@ -13,11 +14,15 @@ const tables: Record<string, unknown[]> = {
   import_rules: [{ id: "rule-1", keyword: "coffee", category_id: "cat-1" }],
 }
 
+// A fresh client object per call, like a real client created during render
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: { getUser },
     from: (table: string) => ({
-      select: async () => ({ data: tables[table], error: null }),
+      select: async () => {
+        selects.push(table)
+        return { data: tables[table], error: null }
+      },
       insert,
     }),
   }),
@@ -41,6 +46,13 @@ async function renderTable(initialData: unknown[] = extracted) {
 function amountInput(row: HTMLElement) {
   return within(row).getByRole("spinbutton") as HTMLInputElement
 }
+
+function categoryOf(row: HTMLElement) {
+  return within(row).getAllByRole("combobox")[0]
+}
+
+// Gives a refetch loop time to show up before asserting on the query log
+const settle = () => new Promise((resolve) => setTimeout(resolve, 50))
 
 function importButton() {
   return screen.getByRole("button", { name: /import/i })
@@ -124,5 +136,32 @@ describe("ReviewTable amounts", () => {
     ])
     expect(toastError).not.toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith("/expenses")
+  })
+})
+
+describe("ReviewTable loading", () => {
+  beforeEach(() => {
+    selects.length = 0
+  })
+
+  it("loads categories, payment methods and rules once and applies the rules", async () => {
+    const [, shop, beans] = await renderTable()
+
+    expect(categoryOf(shop)).toHaveTextContent("Food")
+    expect(categoryOf(beans)).toHaveTextContent("Food")
+    await settle()
+    expect(selects.sort()).toEqual(["categories", "import_rules", "payment_methods"])
+  })
+
+  it("re-applies import rules when a new set of parsed rows arrives", async () => {
+    const { rerender } = render(<ReviewTable initialData={[{ date: "2026-10-01", description: "Rent", amount: 900 }]} onCancel={() => {}} />)
+    const [, rent] = await screen.findAllByRole("row")
+    expect(categoryOf(rent)).toHaveTextContent("Select...")
+
+    rerender(<ReviewTable initialData={[{ date: "2026-10-03", description: "Iced coffee", amount: 4 }]} onCancel={() => {}} />)
+
+    await screen.findByDisplayValue("Iced coffee")
+    const [, coffee] = screen.getAllByRole("row")
+    expect(categoryOf(coffee)).toHaveTextContent("Food")
   })
 })

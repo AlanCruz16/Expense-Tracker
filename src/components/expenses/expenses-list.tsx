@@ -29,32 +29,31 @@ const ICONS = {
 export function ExpensesList() {
     const [expenses, setExpenses] = useState<ExpenseWithDetails[]>([])
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
+    // Created once so it can be an effect dependency without refetching every render
+    const [supabase] = useState(createClient)
 
-    const fetchExpenses = async () => {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select(`
+    useEffect(() => {
+        const fetchExpenses = async () => {
+            const { data, error } = await supabase
+                .from('expenses')
+                .select(`
         *,
         categories (*),
         payment_methods (*)
       `)
-            .order('date', { ascending: false })
-            .order('created_at', { ascending: false })
-            .limit(50)
+                .order('date', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(50)
 
-        if (error) {
-            toast.error('Failed to load expenses')
-        } else {
-            setExpenses(data as ExpenseWithDetails[])
+            if (error) {
+                toast.error('Failed to load expenses')
+            } else {
+                setExpenses(data as ExpenseWithDetails[])
+            }
+            setLoading(false)
         }
-        setLoading(false)
-    }
-
-    useEffect(() => {
-        // eslint-disable-next-line
         fetchExpenses()
-    }, [])
+    }, [supabase])
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this expense?')) return
@@ -68,7 +67,7 @@ export function ExpensesList() {
             toast.error('Failed to delete expense')
         } else {
             toast.success('Expense deleted')
-            setExpenses(expenses.filter(e => e.id !== id))
+            setExpenses(current => current.filter(e => e.id !== id))
         }
     }
 

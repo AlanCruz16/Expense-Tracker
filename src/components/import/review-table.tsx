@@ -54,7 +54,8 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
     const [rules, setRules] = useState<ImportRule[]>([])
     const [loading, setLoading] = useState(true)
     const [importing, setImporting] = useState(false)
-    const supabase = createClient()
+    // Created once so it can be an effect dependency without refetching every render
+    const [supabase] = useState(createClient)
     const router = useRouter()
 
     useEffect(() => {
@@ -89,7 +90,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
             setLoading(false)
         }
         fetchData()
-    }, [initialData])
+    }, [initialData, supabase])
 
     // Each row's amount is parsed once; null marks a row that can't be imported
     const parsedAmounts = expenses.map(e => parseAmount(e.amount))

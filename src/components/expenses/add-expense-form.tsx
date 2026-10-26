@@ -42,7 +42,8 @@ export function AddExpenseForm() {
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const router = useRouter()
-    const supabase = createClient()
+    // Created once so it can be an effect dependency without refetching every render
+    const [supabase] = useState(createClient)
 
     const form = useForm<FormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +56,8 @@ export function AddExpenseForm() {
             comment: '',
         },
     })
+    // setValue is stable across renders, unlike the form object as a whole
+    const { setValue } = form
 
     useEffect(() => {
         const fetchData = async () => {
@@ -75,7 +78,7 @@ export function AddExpenseForm() {
                     const categoryExists = lastCategoryId && catRes.data.some(c => c.id === lastCategoryId)
 
                     if (categoryExists) {
-                        form.setValue('category_id', lastCategoryId!)
+                        setValue('category_id', lastCategoryId!)
                     }
                 }
             }
@@ -88,14 +91,14 @@ export function AddExpenseForm() {
                     const lastMethodId = localStorage.getItem('last_payment_method_id')
                     const methodExists = lastMethodId && methodRes.data.some(m => m.id === lastMethodId)
 
-                    form.setValue('payment_method_id', methodExists ? lastMethodId! : methodRes.data[0].id)
+                    setValue('payment_method_id', methodExists ? lastMethodId! : methodRes.data[0].id)
                 }
             }
 
             setLoading(false)
         }
         fetchData()
-    }, [])
+    }, [supabase, setValue])
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setSubmitting(true)
