@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createFakeSupabase, type FakeSupabase } from "@/test/fake-supabase"
 import { clickDelete, expense, setUpDeleteFlow, toast } from "@/test/delete-flow"
 
@@ -81,5 +83,23 @@ describe("CategoriesManager delete", () => {
 
     await vi.waitFor(() => expect(confirmSpy()).toHaveBeenCalled())
     expect(supabase.deletes).toEqual([])
+  })
+})
+
+describe("CategoriesManager add with an expired session", () => {
+  setUpDeleteFlow()
+
+  it("shows a login error and returns the Save button to idle", async () => {
+    supabase = createFakeSupabase({ categories: [] })
+    render(<CategoriesManager />)
+    await userEvent.click(screen.getByRole("button", { name: /add category/i }))
+    await userEvent.type(screen.getByLabelText("Name"), "Pets")
+    supabase.expireSession()
+
+    const save = screen.getByRole("button", { name: "Save" })
+    await userEvent.click(save)
+
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("You must be logged in"))
+    expect(save).toBeEnabled()
   })
 })

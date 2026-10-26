@@ -103,6 +103,7 @@ export function AddExpenseForm() {
 
         if (!user) {
             toast.error('You must be logged in')
+            setSubmitting(false)
             return
         }
 

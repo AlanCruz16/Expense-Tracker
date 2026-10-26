@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
+import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { createFakeSupabase, type FakeSupabase } from "@/test/fake-supabase"
 import { clickDelete, expense, setUpDeleteFlow, toast } from "@/test/delete-flow"
 
@@ -43,5 +45,23 @@ describe("PaymentMethodsManager delete", () => {
     expect(confirmSpy().mock.calls[0][0]).not.toMatch(/affect expenses/i)
     expect(supabase.deletes).toEqual([{ table: "payment_methods", id: amex.id }])
     expect(supabase.tables.expenses).toEqual([methodExpense("e1", cash.id)])
+  })
+})
+
+describe("PaymentMethodsManager add with an expired session", () => {
+  setUpDeleteFlow()
+
+  it("shows a login error and returns the Save button to idle", async () => {
+    supabase = createFakeSupabase({ payment_methods: [] })
+    render(<PaymentMethodsManager />)
+    await userEvent.click(screen.getByRole("button", { name: /add method/i }))
+    await userEvent.type(screen.getByLabelText("Name"), "Visa")
+    supabase.expireSession()
+
+    const save = screen.getByRole("button", { name: "Save" })
+    await userEvent.click(save)
+
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith("You must be logged in"))
+    expect(save).toBeEnabled()
   })
 })

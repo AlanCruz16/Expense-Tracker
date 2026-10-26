@@ -50,7 +50,11 @@ export function PaymentMethodsManager() {
         setSubmitting(true)
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+            toast.error('You must be logged in')
+            setSubmitting(false)
+            return
+        }
 
         const { error } = await supabase
             .from('payment_methods')

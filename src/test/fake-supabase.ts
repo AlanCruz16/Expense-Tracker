@@ -19,6 +19,7 @@ export function createFakeSupabase(initial: Record<string, Row[]>) {
     Object.entries(initial).map(([name, rows]) => [name, rows.map((row) => ({ ...row }))])
   )
   const deletes: { table: string; id: unknown }[] = []
+  let user: { id: string } | null = { id: "user-1" }
 
   function from(table: string) {
     const filters: [string, unknown][] = []
@@ -75,7 +76,11 @@ export function createFakeSupabase(initial: Record<string, Row[]>) {
 
   return {
     from,
-    auth: { getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }) },
+    auth: { getUser: async () => ({ data: { user }, error: null }) },
+    // Simulates the session expiring in an open tab: getUser() now returns no user.
+    expireSession() {
+      user = null
+    },
     tables,
     deletes,
   }

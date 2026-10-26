@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { monthRange } from '@/lib/month-range'
+import { spendingProgressPercent } from '@/lib/spending-progress'
 import { startOfMonth, format, eachDayOfInterval } from 'date-fns'
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -124,7 +125,7 @@ export function DashboardOverview() {
                         <div className="mt-2 h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ${leftToSpend < 0 ? 'bg-red-500' : 'bg-primary'}`}
-                                style={{ width: `${Math.min((totalOutflows / income) * 100, 100)}%` }}
+                                style={{ width: `${spendingProgressPercent(totalOutflows, income)}%` }}
                             />
                         </div>
                     </CardContent>
