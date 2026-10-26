@@ -73,6 +73,9 @@ describe("CategoriesManager delete", () => {
     expect(supabase.deletes).toEqual([{ table: "categories", id: groceries.id }])
     expect(supabase.tables.expenses).toEqual([categoryExpense("e1", other.id)])
     expect(toast.error).not.toHaveBeenCalled()
+    // The list reloads once after the delete and drops the deleted category
+    await vi.waitFor(() => expect(screen.queryByText("Groceries")).not.toBeInTheDocument())
+    expect(supabase.selects).toEqual(["categories", "categories"])
   })
 
   it("keeps an unused category when the user cancels the confirm", async () => {

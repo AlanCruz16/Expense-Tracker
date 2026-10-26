@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,7 +31,7 @@ export function CategoriesManager() {
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
-    const [supabase] = useState(() => createClient())
+    const supabase = useSupabaseClient()
 
     // Form state
     const [name, setName] = useState('')
@@ -39,24 +39,26 @@ export function CategoriesManager() {
     const [color, setColor] = useState('#3b82f6')
     const [submitting, setSubmitting] = useState(false)
 
-    const fetchCategories = useCallback(async () => {
-        const { data, error } = await supabase
-            .from('categories')
-            .select('*')
-            .order('name')
-
-        if (error) {
-            toast.error('Failed to load categories')
-        } else {
-            setCategories(data || [])
-        }
-        setLoading(false)
-    }, [supabase])
+    // Bumped after an add or delete to load the list again
+    const [reloadKey, setReloadKey] = useState(0)
+    const reload = () => setReloadKey((key) => key + 1)
 
     useEffect(() => {
-        // eslint-disable-next-line
-        fetchCategories()
-    }, [fetchCategories])
+        const fetchList = async () => {
+            const { data, error } = await supabase
+                .from('categories')
+                .select('*')
+                .order('name')
+
+            if (error) {
+                toast.error('Failed to load categories')
+            } else {
+                setCategories(data || [])
+            }
+            setLoading(false)
+        }
+        fetchList()
+    }, [supabase, reloadKey])
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -85,13 +87,13 @@ export function CategoriesManager() {
             toast.success('Category added')
             setOpen(false)
             setName('')
-            fetchCategories()
+            reload()
         }
         setSubmitting(false)
     }
 
     const handleDelete = async (category: Category) => {
-        if (await deleteIfUnused(supabase, 'category', category)) fetchCategories()
+        if (await deleteIfUnused(supabase, 'category', category)) reload()
     }
 
     return (

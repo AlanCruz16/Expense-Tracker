@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -42,8 +42,7 @@ export function AddExpenseForm() {
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const router = useRouter()
-    // Created once so it can be an effect dependency without refetching every render
-    const [supabase] = useState(createClient)
+    const supabase = useSupabaseClient()
 
     const form = useForm<FormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { monthRange } from '@/lib/month-range'
 import { spendingProgressPercent } from '@/lib/spending-progress'
 import { startOfMonth, format, eachDayOfInterval } from 'date-fns'
@@ -28,13 +28,15 @@ export function DashboardOverview() {
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [income, setIncome] = useState(0)
     const [loading, setLoading] = useState(true)
-    // Created once so it can be an effect dependency without refetching every render
-    const [supabase] = useState(createClient)
+    const supabase = useSupabaseClient()
 
     useEffect(() => {
         const fetchData = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
+            if (!user) {
+                setLoading(false)
+                return
+            }
 
             const { start, end } = monthRange(new Date())
 

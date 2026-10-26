@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { ChartTooltip } from "@/components/reports/reports-dashboard"
+import { ChartTooltip } from "@/components/reports/chart-tooltip"
 
 describe("ChartTooltip", () => {
   it("renders nothing when the chart isn't hovered", () => {

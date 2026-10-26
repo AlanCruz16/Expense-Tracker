@@ -1,7 +1,7 @@
 // A small in-memory stand-in for the Supabase browser client, covering only the
 // query shapes the components under test use: select (optionally count/head),
-// eq, gte, lte, order, limit, single, and delete. Selects and deletes are
-// recorded so tests can assert on them.
+// eq, gte, lte, order, limit, single, and delete. Data selects and deletes
+// are recorded so tests can assert on them.
 
 type Row = Record<string, unknown>
 type Result = { data: Row[] | Row | null; count: number | null; error: { code?: string; message: string } | null }
@@ -45,7 +45,8 @@ export function createFakeSupabase(initial: Record<string, Row[]>) {
         matched.forEach((row) => deletes.push({ table, id: row.id }))
         return { data: null, count: null, error: null }
       }
-      selects.push(table)
+      // Count-only (head) selects fetch no rows, so they aren't data loads
+      if (!head) selects.push(table)
       if (single) return { data: matched[0] ?? null, count: null, error: null }
       return { data: head ? null : matched, count: withCount ? matched.length : null, error: null }
     }
@@ -103,7 +104,8 @@ export function createFakeSupabase(initial: Record<string, Row[]>) {
     },
     tables,
     deletes,
-    // Table name of every select that ran, in order.
+    // Table name of every data select that ran, in order. Count-only (head)
+    // selects are left out.
     selects,
   }
 }

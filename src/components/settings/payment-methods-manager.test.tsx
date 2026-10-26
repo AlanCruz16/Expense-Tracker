@@ -45,6 +45,9 @@ describe("PaymentMethodsManager delete", () => {
     expect(confirmSpy().mock.calls[0][0]).not.toMatch(/affect expenses/i)
     expect(supabase.deletes).toEqual([{ table: "payment_methods", id: amex.id }])
     expect(supabase.tables.expenses).toEqual([methodExpense("e1", cash.id)])
+    // The list reloads once after the delete and drops the deleted method
+    await vi.waitFor(() => expect(screen.queryByText("Amex Gold")).not.toBeInTheDocument())
+    expect(supabase.selects).toEqual(["payment_methods", "payment_methods"])
   })
 })
 

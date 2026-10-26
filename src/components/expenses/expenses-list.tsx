@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { format, parse } from 'date-fns'
 import { Loader2, Trash2, Calendar, CreditCard, Utensils, Car, ShoppingBag, Film, ShoppingCart, Zap, Activity, Plane, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -29,8 +29,7 @@ const ICONS = {
 export function ExpensesList() {
     const [expenses, setExpenses] = useState<ExpenseWithDetails[]>([])
     const [loading, setLoading] = useState(true)
-    // Created once so it can be an effect dependency without refetching every render
-    const [supabase] = useState(createClient)
+    const supabase = useSupabaseClient()
 
     useEffect(() => {
         const fetchExpenses = async () => {

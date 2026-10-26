@@ -7,12 +7,14 @@ type FakeExpense = { id: string; date: string; amount: number; comment: string |
 
 let expenses: FakeExpense[] = []
 const expenseQuery = vi.fn()
+let user: { id: string } | null = { id: "user-1" }
 
 // Stands in for Supabase: returns the expenses whose date is inside the
-// requested range, the way the real query would
+// requested range, the way the real query would. A fresh client object per
+// call, like a real client created during render.
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
-    auth: { getUser: async () => ({ data: { user: { id: "user-1" } } }) },
+    auth: { getUser: async () => ({ data: { user } }) },
     from: () => {
       return {
         select: () => ({
@@ -70,6 +72,9 @@ function shownMonth() {
   return screen.getByRole("button", { name: "Previous month" }).nextElementSibling?.textContent
 }
 
+// Gives a refetch loop time to show up before asserting on the query log
+const settle = () => new Promise((resolve) => setTimeout(resolve, 50))
+
 function card(title: string) {
   return screen.getByText(title).closest("[data-slot='card']") as HTMLElement
 }
@@ -79,6 +84,7 @@ describe("ReportsDashboard history window", () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date(2026, 9, 15, 12))
     expenses = []
+    user = { id: "user-1" }
     expenseQuery.mockClear()
   })
 
@@ -89,6 +95,22 @@ describe("ReportsDashboard history window", () => {
   it("loads the last six months of expenses", async () => {
     await renderReports()
     expect(expenseQuery).toHaveBeenCalledWith("2026-05-01", "2026-10-31")
+  })
+
+  it("loads its expenses exactly once on mount", async () => {
+    expenses = [expense("oct-rent", "2026-10-05", 100)]
+    await renderReports()
+
+    expect(card("Total Spent")).toHaveTextContent("$100.00")
+    await settle()
+    expect(expenseQuery).toHaveBeenCalledTimes(1)
+  })
+
+  it("stops loading when the session has expired", async () => {
+    user = null
+    await renderReports()
+
+    expect(expenseQuery).not.toHaveBeenCalled()
   })
 
   it("disables the previous-month control on the oldest loaded month", async () => {

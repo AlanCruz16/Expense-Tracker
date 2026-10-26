@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,31 +19,33 @@ export function PaymentMethodsManager() {
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
-    const [supabase] = useState(() => createClient())
+    const supabase = useSupabaseClient()
 
     // Form state
     const [name, setName] = useState('')
     const [type, setType] = useState('Credit')
     const [submitting, setSubmitting] = useState(false)
 
-    const fetchMethods = useCallback(async () => {
-        const { data, error } = await supabase
-            .from('payment_methods')
-            .select('*')
-            .order('name')
-
-        if (error) {
-            toast.error('Failed to load payment methods')
-        } else {
-            setMethods(data || [])
-        }
-        setLoading(false)
-    }, [supabase])
+    // Bumped after an add or delete to load the list again
+    const [reloadKey, setReloadKey] = useState(0)
+    const reload = () => setReloadKey((key) => key + 1)
 
     useEffect(() => {
-        // eslint-disable-next-line
-        fetchMethods()
-    }, [fetchMethods])
+        const fetchList = async () => {
+            const { data, error } = await supabase
+                .from('payment_methods')
+                .select('*')
+                .order('name')
+
+            if (error) {
+                toast.error('Failed to load payment methods')
+            } else {
+                setMethods(data || [])
+            }
+            setLoading(false)
+        }
+        fetchList()
+    }, [supabase, reloadKey])
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -70,13 +72,13 @@ export function PaymentMethodsManager() {
             toast.success('Payment method added')
             setOpen(false)
             setName('')
-            fetchMethods()
+            reload()
         }
         setSubmitting(false)
     }
 
     const handleDelete = async (method: PaymentMethod) => {
-        if (await deleteIfUnused(supabase, 'paymentMethod', method)) fetchMethods()
+        if (await deleteIfUnused(supabase, 'paymentMethod', method)) reload()
     }
 
     return (

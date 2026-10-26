@@ -39,4 +39,13 @@ describe("DashboardOverview", () => {
     await settle()
     expect(supabase.selects.sort()).toEqual(["expenses", "profiles"])
   })
+
+  it("stops loading when the session has expired", async () => {
+    supabase = createFakeSupabase({ expenses: [], profiles: [] })
+    supabase.expireSession()
+    render(<DashboardOverview />)
+
+    expect(await screen.findByText("Total Spent")).toBeInTheDocument()
+    expect(supabase.selects).toEqual([])
+  })
 })

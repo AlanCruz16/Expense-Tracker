@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { historyWindow, isMonthLoaded } from '@/lib/history-window'
 import {
     startOfMonth, endOfMonth, format, addMonths, subMonths,
@@ -17,8 +17,8 @@ import {
     ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend,
     PieChart, Pie, Cell, CartesianGrid, Area, AreaChart
 } from 'recharts'
-import type { TooltipContentProps } from 'recharts'
 import { Database } from '@/types/supabase'
+import { ChartTooltip } from '@/components/reports/chart-tooltip'
 
 type Expense = Database['public']['Tables']['expenses']['Row'] & {
     categories: Database['public']['Tables']['categories']['Row']
@@ -39,26 +39,6 @@ const MONTH_COMPARISON_COLORS = [
     'oklch(0.75 0.10 145)',   // Previous month (muted)
 ]
 
-// Recharts injects these when the tooltip is used as `content`
-type ChartTooltipProps = Partial<Pick<TooltipContentProps<number, string>, 'active' | 'payload' | 'label'>>
-
-// Custom tooltip for recharts
-export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
-    if (!active || !payload?.length) return null
-    return (
-        <div className="rounded-xl border border-border/50 bg-background/90 backdrop-blur-xl p-3 shadow-lg">
-            <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-            {payload.map((entry, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                    <span className="text-muted-foreground">{entry.name}:</span>
-                    <span className="font-semibold text-foreground">${Number(entry.value).toFixed(2)}</span>
-                </div>
-            ))}
-        </div>
-    )
-}
-
 // How many months of history to load
 const HISTORY_MONTHS = 6
 
@@ -66,33 +46,34 @@ export function ReportsDashboard() {
     const [allExpenses, setAllExpenses] = useState<Expense[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedDate, setSelectedDate] = useState(new Date())
-    const supabase = createClient()
+    const supabase = useSupabaseClient()
     // The months whose expenses are fetched; navigation and comparisons stay inside it
     const [loadedWindow] = useState(() => historyWindow(new Date(), HISTORY_MONTHS))
     const newestLoadedMonth = parseISO(loadedWindow.end)
 
-    const fetchData = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { start, end } = loadedWindow
-
-        const expenseRes = await supabase
-            .from('expenses')
-            .select('*, categories(*)')
-            .gte('date', start)
-            .lte('date', end)
-            .order('date', { ascending: false })
-
-        if (expenseRes.data) setAllExpenses(expenseRes.data as Expense[])
-
-        setLoading(false)
-    }
-
     useEffect(() => {
+        const fetchData = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                setLoading(false)
+                return
+            }
+
+            const { start, end } = loadedWindow
+
+            const expenseRes = await supabase
+                .from('expenses')
+                .select('*, categories(*)')
+                .gte('date', start)
+                .lte('date', end)
+                .order('date', { ascending: false })
+
+            if (expenseRes.data) setAllExpenses(expenseRes.data as Expense[])
+
+            setLoading(false)
+        }
         fetchData()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [supabase, loadedWindow])
 
     // ── Derived data ──
 

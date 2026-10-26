@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -54,8 +54,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
     const [rules, setRules] = useState<ImportRule[]>([])
     const [loading, setLoading] = useState(true)
     const [importing, setImporting] = useState(false)
-    // Created once so it can be an effect dependency without refetching every render
-    const [supabase] = useState(createClient)
+    const supabase = useSupabaseClient()
     const router = useRouter()
 
     useEffect(() => {
