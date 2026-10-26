@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, Utensils, Car, ShoppingBag, Film, ShoppingCart, Zap, Activity, Plane, HelpCircle } from 'lucide-react'
 import { Database } from '@/types/supabase'
+import { deleteIfUnused } from '@/lib/delete-guard'
 
 type Category = Database['public']['Tables']['categories']['Row']
 
@@ -30,7 +31,7 @@ export function CategoriesManager() {
     const [categories, setCategories] = useState<Category[]>([])
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
-    const [supabase] = useState(() => createClient())
+    const supabase = useSupabaseClient()
 
     // Form state
     const [name, setName] = useState('')
@@ -38,31 +39,37 @@ export function CategoriesManager() {
     const [color, setColor] = useState('#3b82f6')
     const [submitting, setSubmitting] = useState(false)
 
-    const fetchCategories = useCallback(async () => {
-        const { data, error } = await supabase
-            .from('categories')
-            .select('*')
-            .order('name')
-
-        if (error) {
-            toast.error('Failed to load categories')
-        } else {
-            setCategories(data || [])
-        }
-        setLoading(false)
-    }, [supabase])
+    // Bumped after an add or delete to load the list again
+    const [reloadKey, setReloadKey] = useState(0)
+    const reload = () => setReloadKey((key) => key + 1)
 
     useEffect(() => {
-        // eslint-disable-next-line
-        fetchCategories()
-    }, [fetchCategories])
+        const fetchList = async () => {
+            const { data, error } = await supabase
+                .from('categories')
+                .select('*')
+                .order('name')
+
+            if (error) {
+                toast.error('Failed to load categories')
+            } else {
+                setCategories(data || [])
+            }
+            setLoading(false)
+        }
+        fetchList()
+    }, [supabase, reloadKey])
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
         setSubmitting(true)
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+            toast.error('You must be logged in')
+            setSubmitting(false)
+            return
+        }
 
         const { error } = await supabase
             .from('categories')
@@ -80,25 +87,13 @@ export function CategoriesManager() {
             toast.success('Category added')
             setOpen(false)
             setName('')
-            fetchCategories()
+            reload()
         }
         setSubmitting(false)
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure? This will affect expenses using this category.')) return
-
-        const { error } = await supabase
-            .from('categories')
-            .delete()
-            .eq('id', id)
-
-        if (error) {
-            toast.error('Failed to delete category')
-        } else {
-            toast.success('Category deleted')
-            fetchCategories()
-        }
+    const handleDelete = async (category: Category) => {
+        if (await deleteIfUnused(supabase, 'category', category)) reload()
     }
 
     return (
@@ -200,7 +195,7 @@ export function CategoriesManager() {
                                         <span className="font-medium">{category.name}</span>
                                     </div>
                                     {!category.is_default && (
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(category.id)}>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(category)} aria-label={`Delete ${category.name}`}>
                                             <Trash2 className="h-4 w-4 text-destructive" />
                                         </Button>
                                     )}

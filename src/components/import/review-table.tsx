@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { Loader2, Check, X, Save, AlertCircle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -20,10 +19,26 @@ type ImportRule = Database['public']['Tables']['import_rules']['Row']
 interface ExtractedExpense {
     date: string
     description: string
-    amount: number
+    // Kept as the raw input text so a cleared field stays empty instead of becoming NaN
+    amount: string
     category_id?: string
     payment_method_id?: string
     selected: boolean
+}
+
+// An importable amount is a finite number greater than zero
+function parseAmount(raw: string): number | null {
+    if (raw.trim() === '') return null
+    const value = Number(raw)
+    return Number.isFinite(value) && value > 0 ? value : null
+}
+
+// Debits often come back negative; every imported expense is a positive amount.
+// A missing or blank amount stays empty (Number would read it as 0).
+function toReviewAmount(extracted: unknown): string {
+    if (extracted == null || String(extracted).trim() === '') return ''
+    const value = Number(extracted)
+    return Number.isFinite(value) ? String(Math.abs(value)) : ''
 }
 
 interface ReviewTableProps {
@@ -39,7 +54,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
     const [rules, setRules] = useState<ImportRule[]>([])
     const [loading, setLoading] = useState(true)
     const [importing, setImporting] = useState(false)
-    const supabase = createClient()
+    const supabase = useSupabaseClient()
     const router = useRouter()
 
     useEffect(() => {
@@ -63,6 +78,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
 
                 return {
                     ...item,
+                    amount: toReviewAmount(item.amount),
                     category_id: rule ? rule.category_id : '',
                     payment_method_id: methodRes.data?.[0]?.id || '', // Default to first method
                     selected: true
@@ -73,7 +89,12 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
             setLoading(false)
         }
         fetchData()
-    }, [initialData])
+    }, [initialData, supabase])
+
+    // Each row's amount is parsed once; null marks a row that can't be imported
+    const parsedAmounts = expenses.map(e => parseAmount(e.amount))
+    const selectedRows = expenses.flatMap((e, i) => e.selected ? [{ ...e, amount: parsedAmounts[i] }] : [])
+    const hasInvalidAmount = selectedRows.some(row => row.amount === null)
 
     const handleImport = async () => {
         console.log('Starting import...')
@@ -87,16 +108,14 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
             return
         }
 
-        const selectedExpenses = expenses.filter(e => e.selected)
-
-        if (selectedExpenses.length === 0) {
+        if (selectedRows.length === 0) {
             toast.error('No expenses selected')
             setImporting(false)
             return
         }
 
         // Validate categories
-        const missingCategories = selectedExpenses.some(e => !e.category_id)
+        const missingCategories = selectedRows.some(e => !e.category_id)
         if (missingCategories) {
             toast.error('Please select a category for all expenses')
             setImporting(false)
@@ -104,16 +123,23 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         }
 
         // Validate payment methods
-        const missingMethods = selectedExpenses.some(e => !e.payment_method_id)
+        const missingMethods = selectedRows.some(e => !e.payment_method_id)
         if (missingMethods) {
             toast.error('Please select a payment method for all expenses')
             setImporting(false)
             return
         }
 
+        // Validate amounts
+        if (hasInvalidAmount) {
+            toast.error('Please enter an amount greater than 0 for all expenses')
+            setImporting(false)
+            return
+        }
+
         // 1. Save Expenses
         const { error } = await supabase.from('expenses').insert(
-            selectedExpenses.map(e => ({
+            selectedRows.map(e => ({
                 user_id: user.id,
                 date: e.date,
                 amount: e.amount,
@@ -133,7 +159,7 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         // We could ask user if they want to save new rules here.
         // For now, let's just import.
 
-        toast.success(`Imported ${selectedExpenses.length} expenses`)
+        toast.success(`Imported ${selectedRows.length} expenses`)
         router.push('/expenses')
         router.refresh()
     }
@@ -144,6 +170,8 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
         setExpenses(newExpenses)
     }
 
+    const selectedCount = selectedRows.length
+
     if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>
 
     return (
@@ -152,9 +180,9 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                 <h3 className="text-lg font-medium">Review & Import</h3>
                 <div className="space-x-2">
                     <Button variant="outline" onClick={onCancel} disabled={importing}>Cancel</Button>
-                    <Button onClick={handleImport} disabled={importing}>
+                    <Button onClick={handleImport} disabled={importing || hasInvalidAmount}>
                         {importing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Import {expenses.filter(e => e.selected).length} Expenses
+                        Import {selectedCount} Expenses
                     </Button>
                 </div>
             </div>
@@ -179,7 +207,9 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {expenses.map((expense, index) => (
+                        {expenses.map((expense, index) => {
+                            const amountInvalid = parsedAmounts[index] === null
+                            return (
                             <TableRow key={index} className={!expense.selected ? 'opacity-50' : ''}>
                                 <TableCell>
                                     <Checkbox
@@ -205,9 +235,13 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                                     <Input
                                         type="number"
                                         value={expense.amount}
-                                        onInput={(e) => updateExpense(index, 'amount', parseFloat((e.target as HTMLInputElement).value))}
+                                        onChange={(e) => updateExpense(index, 'amount', e.target.value)}
+                                        aria-invalid={amountInvalid}
                                         className="w-[100px]"
                                     />
+                                    {amountInvalid && (
+                                        <p className="mt-1 text-xs text-destructive">Enter an amount greater than 0</p>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <Select
@@ -240,7 +274,8 @@ export function ReviewTable({ initialData, onCancel }: ReviewTableProps) {
                                     </Select>
                                 </TableCell>
                             </TableRow>
-                        ))}
+                            )
+                        })}
                     </TableBody>
                 </Table>
             </div>

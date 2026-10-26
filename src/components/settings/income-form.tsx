@@ -18,7 +18,11 @@ export function IncomeForm({ initialIncome }: { initialIncome: number }) {
         setLoading(true)
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+            toast.error('You must be logged in')
+            setLoading(false)
+            return
+        }
 
         const { error } = await supabase
             .from('profiles')

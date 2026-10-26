@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { startOfMonth, endOfMonth, format, eachDayOfInterval } from 'date-fns'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
+import { monthRange } from '@/lib/month-range'
+import { spendingProgressPercent } from '@/lib/spending-progress'
+import { startOfMonth, format, eachDayOfInterval } from 'date-fns'
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Wallet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, Tooltip, Legend } from 'recharts'
@@ -26,38 +28,38 @@ export function DashboardOverview() {
     const [expenses, setExpenses] = useState<Expense[]>([])
     const [income, setIncome] = useState(0)
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
-
-    const fetchData = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const start = startOfMonth(new Date()).toISOString()
-        const end = endOfMonth(new Date()).toISOString()
-
-        const [expenseRes, profileRes] = await Promise.all([
-            supabase
-                .from('expenses')
-                .select('*, categories(*)')
-                .gte('date', start)
-                .lte('date', end),
-            supabase
-                .from('profiles')
-                .select('monthly_income')
-                .eq('id', user.id)
-                .single()
-        ])
-
-        if (expenseRes.data) setExpenses(expenseRes.data as Expense[])
-        if (profileRes.data) setIncome(profileRes.data.monthly_income || 0)
-
-        setLoading(false)
-    }
+    const supabase = useSupabaseClient()
 
     useEffect(() => {
-        // eslint-disable-next-line
+        const fetchData = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                setLoading(false)
+                return
+            }
+
+            const { start, end } = monthRange(new Date())
+
+            const [expenseRes, profileRes] = await Promise.all([
+                supabase
+                    .from('expenses')
+                    .select('*, categories(*)')
+                    .gte('date', start)
+                    .lte('date', end),
+                supabase
+                    .from('profiles')
+                    .select('monthly_income')
+                    .eq('id', user.id)
+                    .single()
+            ])
+
+            if (expenseRes.data) setExpenses(expenseRes.data as Expense[])
+            if (profileRes.data) setIncome(profileRes.data.monthly_income || 0)
+
+            setLoading(false)
+        }
         fetchData()
-    }, [])
+    }, [supabase])
 
     if (loading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-primary" /></div>
 
@@ -124,7 +126,7 @@ export function DashboardOverview() {
                         <div className="mt-2 h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
                             <div
                                 className={`h-full rounded-full transition-all duration-500 ${leftToSpend < 0 ? 'bg-red-500' : 'bg-primary'}`}
-                                style={{ width: `${Math.min((totalOutflows / income) * 100, 100)}%` }}
+                                style={{ width: `${spendingProgressPercent(totalOutflows, income)}%` }}
                             />
                         </div>
                     </CardContent>

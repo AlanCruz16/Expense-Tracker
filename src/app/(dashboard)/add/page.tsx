@@ -1,5 +1,4 @@
 import { AddExpenseForm } from '@/components/expenses/add-expense-form'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function AddExpensePage() {
     return (

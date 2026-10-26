@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { format, parse } from 'date-fns'
 import { Loader2, Trash2, Calendar, CreditCard, Utensils, Car, ShoppingBag, Film, ShoppingCart, Zap, Activity, Plane, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -29,32 +29,30 @@ const ICONS = {
 export function ExpensesList() {
     const [expenses, setExpenses] = useState<ExpenseWithDetails[]>([])
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
+    const supabase = useSupabaseClient()
 
-    const fetchExpenses = async () => {
-        const { data, error } = await supabase
-            .from('expenses')
-            .select(`
+    useEffect(() => {
+        const fetchExpenses = async () => {
+            const { data, error } = await supabase
+                .from('expenses')
+                .select(`
         *,
         categories (*),
         payment_methods (*)
       `)
-            .order('date', { ascending: false })
-            .order('created_at', { ascending: false })
-            .limit(50)
+                .order('date', { ascending: false })
+                .order('created_at', { ascending: false })
+                .limit(50)
 
-        if (error) {
-            toast.error('Failed to load expenses')
-        } else {
-            setExpenses(data as ExpenseWithDetails[])
+            if (error) {
+                toast.error('Failed to load expenses')
+            } else {
+                setExpenses(data as ExpenseWithDetails[])
+            }
+            setLoading(false)
         }
-        setLoading(false)
-    }
-
-    useEffect(() => {
-        // eslint-disable-next-line
         fetchExpenses()
-    }, [])
+    }, [supabase])
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this expense?')) return
@@ -68,7 +66,7 @@ export function ExpensesList() {
             toast.error('Failed to delete expense')
         } else {
             toast.success('Expense deleted')
-            setExpenses(expenses.filter(e => e.id !== id))
+            setExpenses(current => current.filter(e => e.id !== id))
         }
     }
 

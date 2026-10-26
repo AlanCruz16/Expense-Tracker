@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -11,13 +11,13 @@ import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Database } from '@/types/supabase'
-import { Wallet, Tag, FileText, Calendar as CalendarIcon, Loader2, Check, DollarSign } from 'lucide-react'
+import { Wallet, Tag, FileText, Calendar as CalendarIcon, Loader2, Check } from 'lucide-react'
 
 
 // I need to install Textarea, but I'll use Input for now or add it later.
@@ -42,7 +42,7 @@ export function AddExpenseForm() {
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const router = useRouter()
-    const supabase = createClient()
+    const supabase = useSupabaseClient()
 
     const form = useForm<FormValues>({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +55,8 @@ export function AddExpenseForm() {
             comment: '',
         },
     })
+    // setValue is stable across renders, unlike the form object as a whole
+    const { setValue } = form
 
     useEffect(() => {
         const fetchData = async () => {
@@ -75,7 +77,7 @@ export function AddExpenseForm() {
                     const categoryExists = lastCategoryId && catRes.data.some(c => c.id === lastCategoryId)
 
                     if (categoryExists) {
-                        form.setValue('category_id', lastCategoryId!)
+                        setValue('category_id', lastCategoryId!)
                     }
                 }
             }
@@ -88,14 +90,14 @@ export function AddExpenseForm() {
                     const lastMethodId = localStorage.getItem('last_payment_method_id')
                     const methodExists = lastMethodId && methodRes.data.some(m => m.id === lastMethodId)
 
-                    form.setValue('payment_method_id', methodExists ? lastMethodId! : methodRes.data[0].id)
+                    setValue('payment_method_id', methodExists ? lastMethodId! : methodRes.data[0].id)
                 }
             }
 
             setLoading(false)
         }
         fetchData()
-    }, [])
+    }, [supabase, setValue])
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         setSubmitting(true)
@@ -103,6 +105,7 @@ export function AddExpenseForm() {
 
         if (!user) {
             toast.error('You must be logged in')
+            setSubmitting(false)
             return
         }
 
@@ -160,7 +163,7 @@ export function AddExpenseForm() {
                                             className="w-48 text-7xl font-bold border-none shadow-none text-left p-0 h-24 bg-transparent focus-visible:ring-0 placeholder:text-muted-foreground/20 leading-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                             placeholder="0"
                                             {...field}
-                                            onFocus={(e) => {
+                                            onFocus={() => {
                                                 if (field.value === 0) {
                                                     field.onChange('')
                                                 }

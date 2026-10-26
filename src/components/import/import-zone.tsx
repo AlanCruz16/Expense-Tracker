@@ -6,6 +6,29 @@ import { toast } from 'sonner'
 import { Loader2, UploadCloud } from 'lucide-react'
 import { ReviewTable } from '@/components/import/review-table'
 
+const GENERIC_ANALYSIS_ERROR = 'Failed to analyze statement'
+const MAX_ERROR_MESSAGE_LENGTH = 120
+
+// The analyze route answers failures with a short plain-text reason. Anything
+// else (an HTML error page or a multi-line dump from the host) isn't fit for a
+// toast, so the generic message is shown instead.
+async function analysisErrorMessage(response: Response): Promise<string> {
+    const contentType = response.headers.get('content-type') ?? ''
+    if (!contentType.startsWith('text/plain')) return GENERIC_ANALYSIS_ERROR
+    const message = (await response.text().catch(() => '')).trim()
+    const isShortMessage = message !== '' && message.length <= MAX_ERROR_MESSAGE_LENGTH && !message.includes('\n')
+    return isShortMessage ? message : GENERIC_ANALYSIS_ERROR
+}
+
+function readAsDataURL(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = () => reject(reader.error ?? new Error('Could not read file'))
+        reader.readAsDataURL(file)
+    })
+}
+
 export function ImportZone() {
     const [analyzing, setAnalyzing] = useState(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -23,27 +46,27 @@ export function ImportZone() {
         setAnalyzing(true)
 
         try {
-            // Convert to base64
-            const reader = new FileReader()
-            reader.readAsDataURL(file)
-            reader.onload = async () => {
-                const base64 = reader.result
+            const base64 = await readAsDataURL(file)
 
-                const response = await fetch('/api/analyze-receipt', {
-                    method: 'POST',
-                    body: JSON.stringify({ image: base64 }),
-                })
+            const response = await fetch('/api/analyze-receipt', {
+                method: 'POST',
+                body: JSON.stringify({ image: base64 }),
+            })
 
-                if (!response.ok) throw new Error('Analysis failed')
-
-                const result = await response.json()
-                setData(result.expenses)
-                setAnalyzing(false)
+            if (!response.ok) {
+                toast.error(await analysisErrorMessage(response))
+                return
             }
+
+            const result = await response.json()
+            setData(result.expenses)
         } catch (error) {
             console.error(error)
-            toast.error('Failed to analyze statement')
+            toast.error(GENERIC_ANALYSIS_ERROR)
+        } finally {
             setAnalyzing(false)
+            // Clear the input so picking the same file again still fires onChange
+            e.target.value = ''
         }
     }
 

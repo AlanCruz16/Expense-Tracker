@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useEffect } from 'react'
+import { useSupabaseClient } from '@/lib/supabase/use-supabase-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, CreditCard, Banknote } from 'lucide-react'
 import { Database } from '@/types/supabase'
+import { deleteIfUnused } from '@/lib/delete-guard'
 
 type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
 
@@ -18,38 +19,44 @@ export function PaymentMethodsManager() {
     const [methods, setMethods] = useState<PaymentMethod[]>([])
     const [loading, setLoading] = useState(true)
     const [open, setOpen] = useState(false)
-    const [supabase] = useState(() => createClient())
+    const supabase = useSupabaseClient()
 
     // Form state
     const [name, setName] = useState('')
     const [type, setType] = useState('Credit')
     const [submitting, setSubmitting] = useState(false)
 
-    const fetchMethods = useCallback(async () => {
-        const { data, error } = await supabase
-            .from('payment_methods')
-            .select('*')
-            .order('name')
-
-        if (error) {
-            toast.error('Failed to load payment methods')
-        } else {
-            setMethods(data || [])
-        }
-        setLoading(false)
-    }, [supabase])
+    // Bumped after an add or delete to load the list again
+    const [reloadKey, setReloadKey] = useState(0)
+    const reload = () => setReloadKey((key) => key + 1)
 
     useEffect(() => {
-        // eslint-disable-next-line
-        fetchMethods()
-    }, [fetchMethods])
+        const fetchList = async () => {
+            const { data, error } = await supabase
+                .from('payment_methods')
+                .select('*')
+                .order('name')
+
+            if (error) {
+                toast.error('Failed to load payment methods')
+            } else {
+                setMethods(data || [])
+            }
+            setLoading(false)
+        }
+        fetchList()
+    }, [supabase, reloadKey])
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
         setSubmitting(true)
 
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+            toast.error('You must be logged in')
+            setSubmitting(false)
+            return
+        }
 
         const { error } = await supabase
             .from('payment_methods')
@@ -65,25 +72,13 @@ export function PaymentMethodsManager() {
             toast.success('Payment method added')
             setOpen(false)
             setName('')
-            fetchMethods()
+            reload()
         }
         setSubmitting(false)
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure? This will affect expenses using this method.')) return
-
-        const { error } = await supabase
-            .from('payment_methods')
-            .delete()
-            .eq('id', id)
-
-        if (error) {
-            toast.error('Failed to delete payment method')
-        } else {
-            toast.success('Payment method deleted')
-            fetchMethods()
-        }
+    const handleDelete = async (method: PaymentMethod) => {
+        if (await deleteIfUnused(supabase, 'paymentMethod', method)) reload()
     }
 
     return (
@@ -160,7 +155,7 @@ export function PaymentMethodsManager() {
                                         <div className="text-xs text-muted-foreground">{method.type}</div>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => handleDelete(method.id)}>
+                                <Button variant="ghost" size="icon" onClick={() => handleDelete(method)} aria-label={`Delete ${method.name}`}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                             </div>
